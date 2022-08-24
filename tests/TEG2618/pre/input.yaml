@@ -1,0 +1,24 @@
+Boundary conditions:
+  # Either give Reynolds number OR velocity
+  Re: 8e5 # Reynolds number
+  # u: 39.8 # Velocity 
+  d: 1  # Depth in m for 2D simulations
+  T: 300 # Temperature in K
+  p: 9.8e5 # Pressure in Pa
+  h: 0 # Altitude in m
+  amin: -5 # Minimum angle-of-attack
+  amax: 15 # Maximum angle-of-attack
+  inc: 30 # Number of increments
+
+Numerics:
+  solver: Fluent # [Fluent, OpenFOAM, SU2]
+  dim: 2d
+  type: incompressible # [incompressible (Ma < 0.2), compressible (0.2 < Ma < 0.5), transonic (0.5 < Ma < 1.2), supersonic (1.2 < Ma < 5), hypersonic (Ma > 5)]
+
+Objects:
+  TEG2618_basis:
+    L: 0.35 # chord-length in m
+    mesh: mesh/TEG2618_basis.cas
+  Var1:
+    L: 0.355 # chord-length in m
+    mesh: mesh/Var1.cas
