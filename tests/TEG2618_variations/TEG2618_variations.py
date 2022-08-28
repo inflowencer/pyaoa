@@ -7,7 +7,7 @@ import aoa
 simulation = aoa.Analysis("setup.yaml")
 simulation.pre("TEG2618_basis")
 
-print(simulation.y_1)
+# print(simulation.y_1)
 
 
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #

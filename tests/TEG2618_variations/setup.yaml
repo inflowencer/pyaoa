@@ -3,12 +3,12 @@
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 Boundary conditions:
   # Either give Reynolds number OR velocity OR Mach number
-  Re: 8e5 # Reynolds number
+  Re: 8.0e+5 # Reynolds number
   # u: 39.8 # Velocity 
   # Ma: 0.1 # Mach number
   d: 1  # Depth in m for 2D simulations
   T: 300 # Temperature in K
-  p: 9.8e5 # Pressure in Pa
+  p: 9.8e+4 # Pressure in Pa
   h: 0 # Altitude in m
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                           NUMERICS                         #

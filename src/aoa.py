@@ -4,6 +4,7 @@ import re
 import sys
 import os
 import yaml
+import ruamel.yaml as rmy
 
 # Rich printing
 from rich.console import Console
@@ -60,7 +61,6 @@ class Analysis:
 
         def yPlus(self):
             self.C_f = 0.0576 * self.Re**(-0.2)  # skin friction coefficient
-            self.u_b = self.Re * self.nu / self.L  # free stream velocity acc. to Re
             self.tau_w = 0.5 * self.C_f * self.rho * self.u_inf**2 # wall shear stress
             self.u_tau = np.sqrt(self.tau_w / self.rho) # friction velocity
             self.yplus = 1.0
@@ -86,17 +86,43 @@ class Analysis:
             console.print("\n[bold red]Error: [not bold red]No free-stream Reynolds number, velocity or Mach number defined.")
             sys.exit()
 
-        def exportCalculations(self):
+        def exportCalculations(self, exportFile):
             """Function to export calculations for the mesh and free-stream"""
-            try:
-                exportFile = self.setup["I/O"]["pre-calculations"]
-            except:
-                pass
-            else:
-                calculations_dict = {
-                    "p_inf": self.p, "T_inf": self.T, "Object width d": self.d, "rho_inf": self.rho,
-
-                }
+            calculations_dict = {
+                "p": float(self.p), "T": float(self.T), "Object width d": float(self.d), "rho": float(self.rho),
+                "Re": float(self.Re), "u": float(self.u_inf), "Ma": float(self.Ma), "mu": float(self.mu), "nu":
+                float(self.nu), "C_f": float(self.C_f), "tau_w": float(self.tau_w), "u_tau": float(self.u_tau),
+                "yplus": float(self.yplus), "y_1": float(self.y_1)
+            }
+            with open(exportFile, "w") as f:
+                # rmy.dump(calculations_dict, f)
+                yaml.safe_dump(calculations_dict, f)
+            
+            explanation_str = """
+# C_f:   Skin friction coefficient.......(-)
+# Ma:    Mach number.....................(-)
+# d:     Object depth....................(m)
+# Re:    Reynolds number.................(-)
+# T:     Free-stream temperature.........(K)
+# mu:    Free-stream dynamic viscosity...(Pa s)
+# nu:    Free-stream kinematic viscosity.(m2 s-1)
+# p:     Free-stream pressure............(Pa)
+# rho:   Free-stream density.............(kg m-3)
+# tau_w: Wall shear-stress...............(N m-2)
+# u:     Free-stream velocity............(m s-1)
+# u_tau: Shear-velocity..................(m s-1)
+# y_1:   First layer height for y+.......(m)
+# yplus: Dimensionless wall distance.....(-)"""
+            # Open a file with access mode 'a'
+            with open(exportFile, "a") as f:
+                f.write(explanation_str)
+            console.print(f"\nPre-calculations written to: \'{exportFile}\'\n")
+        try:
+            exportFile = self.setup["I/O"]["pre-calculations"]
+        except:
+            pass
+        else:
+            exportCalculations(self, exportFile)
 
 
 
