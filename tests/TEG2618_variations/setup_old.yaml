@@ -1,0 +1,44 @@
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                     BOUNDARY CONDITIONS                    #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+Boundary conditions:
+  # Either give Reynolds number OR velocity OR Mach number
+  Re: 8e5 # Reynolds number
+  # u: 39.8 # Velocity 
+  # Ma: 0.1 # Mach number
+  d: 1  # Depth in m for 2D simulations
+  T: 300 # Temperature in K
+  p: 9.8e5 # Pressure in Pa
+  h: 0 # Altitude in m
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                           NUMERICS                         #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+Numerics:
+  solver: Fluent # [Fluent, OpenFOAM, SU2]
+  dim: 2d
+  type: incompressible # [incompressible (Ma < 0.2), compressible (0.2 < Ma < 0.5), transonic (0.5 < Ma < 1.2), supersonic (1.2 < Ma < 5), hypersonic (Ma > 5)]
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                       PARAMETERS SPACE                     #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+Parameters:
+  amin: -5 # Minimum angle-of-attack
+  amax: 15 # Maximum angle-of-attack
+  inc: 30 # Number of increments
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                           FILE I/O                         #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+I/O:
+  pre-calculations: -5 # Where the calculations such as first layer height shall be written to
+  input-file: 15 # Path of the input file for the analysis
+  # outpu-file: 30 # Number of increments
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                      OBJECTS TO ANALYZE                    #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+Objects:
+  TEG2618_basis:
+    L: 0.35 # chord-length in m
+    mesh: mesh/TEG2618_basis.cas
+    output: post/TEG2618_basis.cas
+  Var1:
+    L: 0.355 # chord-length in m
+    mesh: mesh/Var1.cas
