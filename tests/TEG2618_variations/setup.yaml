@@ -29,7 +29,8 @@ Parameters:
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 I/O:
   pre-calculations: pre/calculations.yaml # Where the calculations such as first layer height shall be written to
-  input-file: 15 # Path of the input file for the analysis
+  run-file: pre/input/TEG2618_variations.jou # Path of the input file for the analysis
+  base-case: run/2d_base-inc.cas.h5
   # outpu-file: 30 # Number of increments
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #
@@ -38,7 +39,7 @@ Objects:
   TEG2618_basis:
     L: 0.35 # chord-length in m
     mesh: mesh/TEG2618_basis.cas
-    output: post/TEG2618_basis.cas
+    # output: post/TEG2618_basis.cas
   Var1:
     L: 0.355 # chord-length in m
     mesh: mesh/Var1.cas
