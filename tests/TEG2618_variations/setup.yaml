@@ -10,6 +10,11 @@ Boundary conditions:
   T: 300 # Temperature in K
   p: 9.8e+4 # Pressure in Pa
   h: 0 # Altitude in m
+  I: 0.35 # Turbulent intensity in %
+  inlet:
+    name: inlet
+    type: velocity-inlet  # [velocity-inlet, farfield, mixed (for openfoam / su2)]
+
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                           NUMERICS                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -28,9 +33,11 @@ Parameters:
 #                           FILE I/O                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 I/O:
+  # All paths specified here are relative from this location. Consider the same folder structure as in the examples
   pre-calculations: pre/calculations.yaml # Where the calculations such as first layer height shall be written to
-  run-file: pre/input/TEG2618_variations.jou # Path of the input file for the analysis
+  run-file: run/TEG2618_variations.jou # Path of the input file for the analysis
   base-case: run/2d_base-inc.cas.h5
+  post-folder: post/
   # outpu-file: 30 # Number of increments
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #

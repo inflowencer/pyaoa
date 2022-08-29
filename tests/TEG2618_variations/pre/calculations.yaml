@@ -37,6 +37,7 @@ Var1:
 # A:     Object area.....................(m2)
 # Re:    Reynolds number.................(-)
 # T:     Free-stream temperature.........(K)
+# l:     Turbulent length scale .........(m)
 # mu:    Free-stream dynamic viscosity...(Pa s)
 # nu:    Free-stream kinematic viscosity.(m2 s-1)
 # p:     Free-stream pressure............(Pa)
