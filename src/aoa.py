@@ -35,6 +35,13 @@ class Analysis:
         self.objects = self.setup["Objects"]  # Objects
         self.dim = self.setup["Numerics"]["dim"]  # Dimension
         self.solver = self.setup["Numerics"]["solver"].lower()
+        self.base_case = self.setup["Numerics"]["base-case"].lower()
+        self.run_file = self.setup["Numerics"]["run-file"].lower()
+        self.amin = float(self.setup["Parameters"]["amin"])
+        self.amax = float(self.setup["Parameters"]["amax"])
+        self.inc = int(self.setup["Parameters"]["inc"])
+        self.inlet_name = str(self.setup["Boundary conditions"]["inlet"]["name"]).lower()
+        self.inlet_type = str(self.setup["Boundary conditions"]["inlet"]["type"]).lower()
 
         # Preprocessing Mode
         if int(self.mode) == 0:
@@ -92,6 +99,7 @@ class Analysis:
             yplus = 1.0
             y_1 = yplus * self.nu / u_tau # first layer height
             delta = 0.37 * L * Re**(-0.2)
+            l = 0.4 * delta
             return y_1, delta
 
         # 2. Check if the free-stream is well defined
@@ -116,7 +124,7 @@ class Analysis:
 
         A = d * L
 
-        return y_1, Ma, delta, A, Re, u_inf, L
+        return y_1, Ma, delta, A, Re, u_inf, L, l
 
 
     def exportCalculations(self, exportFile, objDict):
@@ -172,52 +180,68 @@ class Analysis:
 
     def runFileStr(self, objDict):
         """Create the run file based on the objects and solver"""
-        # def fluent():
-        # def openfoam():
-        # def su2():
-        pass
 
-    def Pre(self):
-        """Preprocessing method"""
+        console = Console()
 
-        # 1. Determine ambient conditions which return self.ambientDict
-        self.ambientConditions()
+        def fluent(self, objDict):
+            """Creates a fluent input string"""
+            # Initialize all angles as array of angles
+            angles = np.linspace(self.amin, self.amax, self.inc + 1, retstep=True)
 
-        # 2. Create objects to analyze, calculate their specific attributes
-        #    and generate the runFile String
-        objDict = {}
-        for obj in self.objects.keys():
-            y_1, Ma, delta, A, Re, u_inf, L = self.objectCalculations(obj)
-            objDict[obj] = {
-                "y_1": float(y_1), "delta": float(delta), "A": float(A),
-                "Re": float(Re), "Ma": float(Ma), "u_inf": float(u_inf),
-                "L": float(L)
-            }
 
-            # runFile = self.runFileStr(objDict)
-        
-        # 3. Export calculations if specified
-        try:
-            exportFile = self.setup["I/O"]["pre-calculations"]
-        except:
-            pass
-        else:
-            if exportFile:
-                self.exportCalculations(exportFile, objDict)
+            # 0. Initialize the input str
+            inputStr = f"""\
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+;                        AoA Analysis                       ;
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+; Parameters:
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+; alpha_min: {self.amin}
+; alpha_max: {self.amax}
+; increments: {self.inc}
 
-        # 4. Export run file
+; Total no. of simulations: {int(len(objDict) * len(angles))}
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+;                    Beginning Analysis...                  ;
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;\n
+"""
+            # 1. Loop over all objects
+            for objName, objAttr in objDict.items():
 
-        # 4. Create the Run File for the solver
+                # 1.1 Calculate dict of ux and uy components
+                angleDict = {}
+                for angle in angles:
+                    ux = np.cos(np.deg2rad(5)) * objAttr["u_inf"]
+                    uy = np.sin(np.deg2rad(5)) * objAttr["u_inf"]
+                    angleDict[angle] = {"ux": ux, "uy": uy}
 
-        # def runFile(self):
-        #     """Method to create a run """
-        #     solver = self.setup["Numerics"]["solver"]
+                # 1.2 Print the current object that will be analyzed
+                inputStr += f"""
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+;     Analysing object `{objName}`                 ;
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;"""
 
-        #     angleList = np.linspace(self.aoaMin, self.aoaMax, self.numberOfIncrements + 1, retstep=True)
-        #     delta_alpha = angleList[1]
+                # 1.3 Read in the mesh of that object
+                mesh = self.setup["Objects"][objName]["mesh"]
+                inputStr += f"""
+; Reading in mesh from {mesh}
+/file/replace-mesh {mesh} o
+"""
 
-        #     # Start transcript in order for the console output to be written to a file
-        #     fluentString = ';{}\n/file/start-transcript ../{} o\n\n'.format(self.airfoilName, self.transcriptFilename)
+                # 1.4 Loop over angleDict angles
+                for angle, components in angleDict.items:
+                    # 1.4.1 Set the correct boundary condition according to the calculations for the current angle
+                    if self.inlet_type == "velocity-inlet" or "velocity inlet":
+                        inputStr += f"""
+; Setting 
+/define/bound/set/velocity/{self.inlet_name}} () dir-0 no {components["ux"]} no dir-1 {components["uy"]} 
+"""
+                    # TODO: Farfield
+                    # elif self.inlet_type == "pressure-far-field" or "pressure far field":
+                    #     pass
+
+            # Start transcript in order for the console output to be written to a file
+            # fluentString = ';{}\n/file/start-transcript ../{} o\n\n'.format(self.airfoilName, self.transcriptFilename)
         #     fluentString += '/file/replace-mesh {} o\n'.format(self.meshFilename)
         #     fluentString += '/define/bound/set/pres/inlet_farfield () mach n {} ()\n'.format(self.Ma)
 
@@ -254,6 +278,52 @@ class Analysis:
 
         #     with open(self.inputFilename, "w") as f:
         #         f.write(fluentString)
+        # def openfoam(self, obj):
+        # def su2(self, obj):
+
+        if self.solver == "fluent":
+            inputStr = fluent(objDict)
+        # elif self.solver == "openfoam":
+        #     openfoam()
+        # elif self.solver == "su2":
+        #     su2()
+        else:
+            console.print("[bold red]Error: [not bold bright_white]Wrong solver specified in \"Numerics -> Solver\".\nAllowed solvers: [fluent, openfoam, su2]")
+
+        return inputStr
+
+
+    def Pre(self):
+        """Preprocessing method"""
+
+        # 1. Determine ambient conditions which return self.ambientDict
+        self.ambientConditions()
+
+        # 2. Create objects to analyze, calculate their specific attributes
+        #    and generate the runFile String
+        objDict = {}
+        for obj in self.objects.keys():
+            y_1, Ma, delta, A, Re, u_inf, L, l = self.objectCalculations(obj)
+            objDict[obj] = {
+                "y_1": float(y_1), "delta": float(delta), "A": float(A),
+                "Re": float(Re), "Ma": float(Ma), "u_inf": float(u_inf),
+                "L": float(L), "l": float(l)
+            }
+
+        inputStr = self.runFileStr(objDict)
+        
+        # 3. Export calculations if specified
+        try:
+            exportFile = self.setup["I/O"]["pre-calculations"]
+        except:
+            pass
+        else:
+            if exportFile:
+                self.exportCalculations(exportFile, objDict)
+
+        # 4. Export input str
+        with open(self.run_file, "w") as f:
+            f.write(inputStr)
         
     
 
