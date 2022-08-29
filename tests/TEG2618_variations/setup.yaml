@@ -22,6 +22,7 @@ Numerics:
   solver: fluent # [fluent, openfoam, su2]
   dim: 2d
   type: incompressible # [incompressible (Ma < 0.2), compressible (0.2 < Ma < 0.5), transonic (0.5 < Ma < 1.2), supersonic (1.2 < Ma < 5), hypersonic (Ma > 5)]
+  iter: 1000 # Number of iterations (int)
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                       PARAMETERS SPACE                     #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -41,8 +42,7 @@ I/O:
   post-folder: post/
   # Files:
   run-file: TEG2618_variations.jou # Name of the input file for the analysis, will be written to the `run-folder`
-  base-case: 2d_base-inc.cas.h5 # Must be in the `run-folder`
-  # outpu-file: 30 # Number of increments
+  base-case: 2d_base-inc.cas.h5 # Name of base case
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #

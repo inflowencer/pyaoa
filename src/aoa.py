@@ -30,23 +30,43 @@ class Analysis:
         console = Console()
 
         self.mode = Prompt.ask("\n[bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]\nSelect the mode  [bold cyan]0: Preprocessing    [bold yellow]1: Postprocessing\n", choices=["0", "1"], default="0")
+        # Read in yaml setup
         with open(setupFile, "r") as f:
             self.setup = yaml.safe_load(f)
         self.working_dir = self.setup["I/O"]["working-dir"]
+        # Folder related stuff
         os.chdir(self.working_dir)
-        self.objects = self.setup["Objects"]  # Objects
+        self.pre_folder = str(self.setup["I/O"]["pre-folder"])
+        self.post_folder = str(self.setup["I/O"]["post-folder"])
+        self.run_folder = str(self.setup["I/O"]["run-folder"])
+
+        def folderSlash(folder):
+            """Appends '/' if folder isn't specified like that"""
+            if not folder[-1] == "/":
+                folder += "/"
+                return folder
+            else:
+                return folder
+
+        self.pre_folder = folderSlash(self.pre_folder)
+        self.post_folder = folderSlash(self.post_folder)
+        self.run_folder = folderSlash(self.run_folder)
+        
+        # Numerics related
         self.dim = self.setup["Numerics"]["dim"]  # Dimension
         self.solver = self.setup["Numerics"]["solver"].lower()
+        self.n_iter = int(str(self.setup["Numerics"]["iter"]))
+        # I/O related
         self.base_case = self.setup["I/O"]["base-case"].lower()
-        self.run_file = self.setup["I/O"]["run-file"]
+        self.run_file = self.run_folder + self.setup["I/O"]["run-file"]
+        # Objects and parameter related
+        self.objects = self.setup["Objects"]  # Objects
         self.amin = float(self.setup["Parameters"]["amin"])
         self.amax = float(self.setup["Parameters"]["amax"])
         self.inc = int(self.setup["Parameters"]["inc"])
+        # Boundary condition related
         self.inlet_name = str(self.setup["Boundary conditions"]["inlet"]["name"]).lower()
         self.inlet_type = str(self.setup["Boundary conditions"]["inlet"]["type"]).lower()
-        self.post_folder = str(self.setup["I/O"]["post-folder"])
-        if not self.post_folder[-1] == "/":
-            self.post_folder += "/"
         try:
             self.I = float(self.setup["Boundary conditions"]["I"])
         except:
@@ -133,7 +153,7 @@ class Analysis:
 
         A = d * L
 
-        return y_1, Ma, delta, A, Re, u_inf, L, l
+        return y_1, round(Ma, 3), round(delta, 5), A, round(Re, 1), round(u_inf, 4), L, round(l, 5)
 
 
     def exportCalculations(self, exportFile, objDict):
@@ -174,6 +194,9 @@ class Analysis:
 # A:     Object area.....................(m2)
 # Re:    Reynolds number.................(-)
 # T:     Free-stream temperature.........(K)
+# l:     Turbulent length scale d99*0.4..(m)
+# L:     Object chord length.............(m)
+# delta: Boundary layer thickness d99....(m)
 # mu:    Free-stream dynamic viscosity...(Pa s)
 # nu:    Free-stream kinematic viscosity.(m2 s-1)
 # p:     Free-stream pressure............(Pa)
@@ -184,7 +207,7 @@ class Analysis:
 # y_1:   First layer height for y+.......(m)
 # yplus: Dimensionless wall distance.....(-)""")
 
-        console.print(f"\nPre-calculations written to: \'{exportFile}\'\n")
+        console.print(f"\nPre-calculations written to: \'{exportFile}\'")
 
 
     def runFileStr(self, objDict):
@@ -197,7 +220,6 @@ class Analysis:
             # Initialize all angles as array of angles
             angles = np.linspace(self.amin, self.amax, self.inc + 1, retstep=False)
 
-
             # 0. Initialize the input str and start the transcript
             inputStr = f"""\
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
@@ -209,8 +231,6 @@ class Analysis:
 ; alpha_max: {self.amax}
 ; increments: {self.inc}
 
-; Opening transcript file 
-/file/start-transcript ../{} o\n\n'.format(self.airfoilName, self.transcriptFilename)
 
 ; Total no. of simulations: {int(len(objDict) * len(angles))}
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
@@ -227,15 +247,17 @@ class Analysis:
                 angleDict = {}
                 for angle in angles:
                     angle = round(float(angle), 4)
-                    ux = round(np.cos(np.deg2rad(5)) * objAttr["u_inf"], 4)
-                    uy = round(np.sin(np.deg2rad(5)) * objAttr["u_inf"], 4)
+                    ux = round(np.cos(np.deg2rad(angle)) * objAttr["u_inf"], 4)
+                    uy = round(np.sin(np.deg2rad(angle)) * objAttr["u_inf"], 4)
                     angleDict[str(angle)] = {"ux": ux, "uy": uy}
 
                 # 1.2 Print the current object that will be analyzed
                 inputStr += f"""\n
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ;              Analysing object `{objName}`
-; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;"""
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
+; Opening transcript...
+/file/start-transcript run/{objName}"""
 
                 # 1.3 Read in the mesh of that object
                 mesh = self.setup["Objects"][objName]["mesh"]
@@ -248,42 +270,31 @@ class Analysis:
                 for angle, components in angleDict.items():
                     # 1.4.1 Set the correct boundary condition according to the calculations for the current angle
                     if self.inlet_type == "velocity-inlet" or "velocity inlet":
+# ; Setting the velocity components for angle {angle} deg to [ux: {components["ux"]}, uy: {components["uy"]}]
                         inputStr += f"""
-; Setting the velocity components for angle {angle} deg to [ux: {components["ux"]}, uy: {components["uy"]}]
+; Angle: {angle} deg
 /define/bound/set/velocity/{self.inlet_name} () dir-0 no {components["ux"]} no dir-1 {components["uy"]} ke-spec no yes turb-len {objAttr["l"]} turb-int {self.I}
 """
                     # TODO: Farfield
                     # elif self.inlet_type == "pressure-far-field" or "pressure far field":
 
-                    inputStr += f"""
-; Setting the output folder name for angle {angle} deg to "{self.post_folder}{objName}"
-; Set file for output of DRAG
+# ; Setting the output folder name for angle {angle} deg to "{self.post_folder}{objName}"
+# ; Set file for output of DRAG
+# ; Set file for output of LIFT
+                    inputStr += f"""\
 /solve/report-files/edit/drag/file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
-; Set file for output of LIFT
 /solve/report-files/edit/lift/file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
 """
-            # print(inputStr)
+                    # 1.5 Initialize the solution
+                    inputStr += f"""\
+/solve/init/hyb\n/solve/it {self.n_iter}\n"""
+
+                # 1.6 Stop transcript for this object
+                inputStr += f"""
+; Stopping transcript...
+/file/stop-transcript\n"""
             return inputStr
 
-        #     fluentString += '''/solve/init/hyb\n/solve/it {}\n'''.format(numberOfIterations)  # initial solution
-
-
-            # Start transcript in order for the console output to be written to a file
-
-        #     # First solution at minimum angle:
-        #     # if generateImages:
-        #     #     fluentString += '''/display/views/rest view-0\n/display/objects/display logk\n'''
-        #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_logk.png\n'''.format(self.airfoilName, round(self.aoaMin))
-        #     #     fluentString += '''/display/views/rest view-0\n/display/objects/display u\n'''
-        #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_u.png\n'''.format(self.airfoilName, round(self.aoaMin))
-        #     #     fluentString += '''/display/views/rest view-0\n/display/objects/display p\n'''
-        #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_p.png\n'''.format(self.airfoilName, round(self.aoaMin))
-
-        #     fluentString += '/file/stop-transcript\n\n'
-        #     self.fluentString  = fluentString
-
-        #     with open(self.inputFilename, "w") as f:
-        #         f.write(fluentString)
         # def openfoam(self, obj):
         # def su2(self, obj):
 
@@ -301,6 +312,8 @@ class Analysis:
 
     def Pre(self):
         """Preprocessing method"""
+
+        console = Console()
 
         # 1. Determine ambient conditions which return self.ambientDict
         self.ambientConditions()
@@ -323,6 +336,7 @@ class Analysis:
             exportFolder = self.setup["I/O"]["pre-folder"]
         except:
             exportFile = "pre/calculations.yaml"
+            self.exportCalculations(exportFile, objDict)
         else:
             if exportFolder:
                 if not exportFolder[-1] == "/":
@@ -333,6 +347,8 @@ class Analysis:
         # 4. Export input str
         with open(self.run_file, "w") as f:
             f.write(inputStr)
+            console.print(f"Input file written to:       \'{self.run_file}\'")
+
         
     
 
