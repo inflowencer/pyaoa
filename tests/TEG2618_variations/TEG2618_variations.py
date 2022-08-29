@@ -1,11 +1,12 @@
 # Helper to import non packaged Python source file
 import sys
-sys.path.insert(1, '/home/joe/airfoil_lab/project_db/projects/software/iikj/src')
+from pathlib import Path
+home = str(Path.home())
+sys.path.insert(1, f"{home}/airfoil_lab/project_db/projects/software/iikj/src")
 
 import aoa
 
 simulation = aoa.Analysis("setup.yaml")
-simulation.pre("TEG2618_basis")
 
 # print(simulation.y_1)
 

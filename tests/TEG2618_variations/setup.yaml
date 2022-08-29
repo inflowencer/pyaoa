@@ -14,7 +14,7 @@ Boundary conditions:
 #                           NUMERICS                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 Numerics:
-  solver: Fluent # [Fluent, OpenFOAM, SU2]
+  solver: fluent # [fluent, openfoam, su2]
   dim: 2d
   type: incompressible # [incompressible (Ma < 0.2), compressible (0.2 < Ma < 0.5), transonic (0.5 < Ma < 1.2), supersonic (1.2 < Ma < 5), hypersonic (Ma > 5)]
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -38,6 +38,7 @@ I/O:
 Objects:
   TEG2618_basis:
     L: 0.35 # chord-length in m
+    # d: 0.35 # Depth / Width incase of 3D simulation
     mesh: mesh/TEG2618_basis.cas
     # output: post/TEG2618_basis.cas
   Var1:

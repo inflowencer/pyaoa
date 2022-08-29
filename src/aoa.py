@@ -4,7 +4,6 @@ import re
 import sys
 import os
 import yaml
-import ruamel.yaml as rmy
 
 # Rich printing
 from rich.console import Console
@@ -27,15 +26,25 @@ class Analysis:
 
 
     def __init__(self, setupFile):
+
         console = Console()
-        # console.print("\n[bold bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]\n\nSelect the mode  [bold yellow]0: Preprocessing    [bold cyan]1: Postprocessing\n")
+
         self.mode = Prompt.ask("\n[bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]\nSelect the mode  [bold cyan]0: Preprocessing    [bold yellow]1: Postprocessing\n", choices=["0", "1"], default="0")
         with open(setupFile, "r") as f:
             self.setup = yaml.safe_load(f)
+        self.objects = self.setup["Objects"]  # Objects
+        self.dim = self.setup["Numerics"]["dim"]  # Dimension
+        self.solver = self.setup["Numerics"]["solver"].lower()
+
+        # Preprocessing Mode
+        if int(self.mode) == 0:
+            self.Pre()
+        elif int(self.mode) == 1:
+            self.Post()
     
 
     def ambientConditions(self):
-        """Function to calculate and return ambient condition calculations for free-stream"""
+        """Method to calculate and create ambient_dict attribute for free-stream boundary conditions."""
         # 1. Check pressure and temperature. If not given, use standard conditions
         try:
             self.p = float(self.setup["Boundary conditions"]["p"])
@@ -45,10 +54,11 @@ class Analysis:
             self.T = float(self.setup["Boundary conditions"]["T"])
         except:
             self.T = 298.15
-        try:
-            self.d = float(self.setup["Boundary conditions"]["d"])
-        except:
-            self.d = 1.0
+        # TODO FIX depth
+        # try:
+        #     self.d = float(self.setup["Boundary conditions"]["d"])
+        # except:
+        #     self.d = 1.0
 
         self.rho = 0.029 / 8.314 * self.p / self.T # Density according to material data
         # Calculate viscosity according to Sutherland
@@ -56,18 +66,23 @@ class Analysis:
         self.nu = self.mu / self.rho
         self.a = np.sqrt(1.4 * 8.314 / 0.029 * self.T)
 
-        self.ambient_dict = {
-            "p": float(self.p), "T": float(self.T), "Object width d": float(self.d), "rho": float(self.rho),
-            "Re": float(self.Re), "u": float(self.u_inf), "Ma": float(self.Ma), "mu": float(self.mu), "nu":
-            float(self.nu), "C_f": float(self.C_f), "tau_w": float(self.tau_w), "u_tau": float(self.u_tau),
-            "yplus": float(self.yplus), "y_1": float(self.y_1)
+        self.ambientDict = {
+            "p": float(self.p), "T": float(self.T), "rho": float(self.rho),
+            "mu": float(self.mu), "nu": float(self.nu), "a": float(self.a)
         }
 
 
     def objectCalculations(self, obj):
         """Function to calculate and return ambient condition calculations for free-stream"""
         console = Console()
-        L = self.setup["Objects"][obj]["L"]
+        L = float(self.setup["Objects"][obj]["L"])
+        if str(self.dim.lower()) == "2d" or "2":
+            d = float(self.setup["Boundary conditions"]["d"])
+        elif str(self.dim.lower()) == "3d" or "3":
+            d = float(self.setup["Objects"][obj]["d"])
+        else:
+            d = 1.0
+
 
         # TODO: TRANSONIC AND HIGHER MACH NUMBER FLOWS
         def yPlus(self, Re, u_inf):
@@ -99,18 +114,47 @@ class Analysis:
             console.print("\n[bold red]Error: [not bold red]No free-stream Reynolds number, velocity or Mach number defined.")
             sys.exit()
 
-        return y_1, Ma, delta
+        A = d * L
+
+        return y_1, Ma, delta, A, Re, u_inf, L
 
 
-    def exportCalculations(self):
+    def exportCalculations(self, exportFile, objDict):
+        """Method to export the ambient conditions and object attributes."""
+
+        console = Console()
+
+        # 0. Write header
         with open(exportFile, "w") as f:
-            # rmy.dump(calculations_dict, f)
-            yaml.safe_dump(calculations_dict, f)
+            f.write("""
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                      AMBIENT CONDITIONS                    #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+""")
+        # 1. Write the ambient dict
+        with open(exportFile, "a") as f:
+            yaml.safe_dump(self.ambientDict, f)
+        # 2. Write Obj header
+        with open(exportFile, "a") as f:
+            f.write("""
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                      OBJECTS TO ANALYZE                    #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+""")
+        # 3. Write Obj dict
+        with open(exportFile, "a") as f:
+            yaml.safe_dump(objDict, f)
         
-        explanation_str = """
+        # 4. Write Explanations
+        with open(exportFile, "a") as f:
+            f.write("""\n
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+#                         ABBREVIATIONS                      #
+# - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 # C_f:   Skin friction coefficient.......(-)
 # Ma:    Mach number.....................(-)
 # d:     Object depth....................(m)
+# A:     Object area.....................(m2)
 # Re:    Reynolds number.................(-)
 # T:     Free-stream temperature.........(K)
 # mu:    Free-stream dynamic viscosity...(Pa s)
@@ -121,25 +165,50 @@ class Analysis:
 # u:     Free-stream velocity............(m s-1)
 # u_tau: Shear-velocity..................(m s-1)
 # y_1:   First layer height for y+.......(m)
-# yplus: Dimensionless wall distance.....(-)"""
-        # Open a file with access mode 'a'
-        with open(exportFile, "a") as f:
-            f.write(explanation_str)
+# yplus: Dimensionless wall distance.....(-)""")
+
         console.print(f"\nPre-calculations written to: \'{exportFile}\'\n")
 
-        # 3. Run Calculations if defined
+
+    def runFileStr(self, objDict):
+        """Create the run file based on the objects and solver"""
+        # def fluent():
+        # def openfoam():
+        # def su2():
+        pass
+
+    def Pre(self):
+        """Preprocessing method"""
+
+        # 1. Determine ambient conditions which return self.ambientDict
+        self.ambientConditions()
+
+        # 2. Create objects to analyze, calculate their specific attributes
+        #    and generate the runFile String
+        objDict = {}
+        for obj in self.objects.keys():
+            y_1, Ma, delta, A, Re, u_inf, L = self.objectCalculations(obj)
+            objDict[obj] = {
+                "y_1": float(y_1), "delta": float(delta), "A": float(A),
+                "Re": float(Re), "Ma": float(Ma), "u_inf": float(u_inf),
+                "L": float(L)
+            }
+
+            # runFile = self.runFileStr(objDict)
+        
+        # 3. Export calculations if specified
         try:
             exportFile = self.setup["I/O"]["pre-calculations"]
         except:
             pass
         else:
-            exportCalculations(self, exportFile)
+            if exportFile:
+                self.exportCalculations(exportFile, objDict)
 
-    def pre(self, obj):
-        """Preprocessing method"""
-        pass
+        # 4. Export run file
 
         # 4. Create the Run File for the solver
+
         # def runFile(self):
         #     """Method to create a run """
         #     solver = self.setup["Numerics"]["solver"]
@@ -187,14 +256,6 @@ class Analysis:
         #         f.write(fluentString)
         
     
-    # For each object, run the pre-processing
-    objects = self.setup["Objects"]
-    for obj in objects.keys():
-        if self.mode == 0:
-            Pre(obj)
-        elif self.mode == 0:
-            Post(obj)
-
 
 
 # SCRATCH
