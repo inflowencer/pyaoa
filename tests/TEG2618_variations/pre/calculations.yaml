@@ -14,16 +14,20 @@ rho: 1.1394435089407426
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 TEG2618_basis:
   A: 0.35
+  L: 0.35
   Ma: 0.10671131725197588
   Re: 800000.0
   delta: 0.00854381372225449
+  l: 0.003417525488901796
   u_inf: 37.02892782738116
   y_1: 1.0036696973181419e-05
 Var1:
   A: 0.355
+  L: 0.355
   Ma: 0.10520834095265229
   Re: 800000.0
   delta: 0.008665868204000981
+  l: 0.0034663472816003926
   u_inf: 36.50739363262932
   y_1: 1.018007835851258e-05
 
@@ -37,7 +41,6 @@ Var1:
 # A:     Object area.....................(m2)
 # Re:    Reynolds number.................(-)
 # T:     Free-stream temperature.........(K)
-# l:     Turbulent length scale .........(m)
 # mu:    Free-stream dynamic viscosity...(Pa s)
 # nu:    Free-stream kinematic viscosity.(m2 s-1)
 # p:     Free-stream pressure............(Pa)

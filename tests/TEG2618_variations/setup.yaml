@@ -28,16 +28,20 @@ Numerics:
 Parameters:
   amin: -5 # Minimum angle-of-attack
   amax: 15 # Maximum angle-of-attack
-  inc: 30 # Number of increments
+  inc: 5 # Number of increments
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                           FILE I/O                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 I/O:
-  # All paths specified here are relative from this location. Consider the same folder structure as in the examples
-  pre-calculations: pre/calculations.yaml # Where the calculations such as first layer height shall be written to
-  run-file: run/TEG2618_variations.jou # Path of the input file for the analysis
-  base-case: run/2d_base-inc.cas.h5
+  working-dir: /home/joe/airfoil_lab/project_db/projects/software/iikj/tests/TEG2618_variations # Should be an absolute path
+  # All paths specified below are relative from this location. Consider the same folder structure as in the examples
+  # Folders:
+  pre-folder: pre/
+  run-folder: run/
   post-folder: post/
+  # Files:
+  run-file: TEG2618_variations.jou # Name of the input file for the analysis, will be written to the `run-folder`
+  base-case: 2d_base-inc.cas.h5 # Must be in the `run-folder`
   # outpu-file: 30 # Number of increments
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #

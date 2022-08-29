@@ -32,16 +32,25 @@ class Analysis:
         self.mode = Prompt.ask("\n[bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]\nSelect the mode  [bold cyan]0: Preprocessing    [bold yellow]1: Postprocessing\n", choices=["0", "1"], default="0")
         with open(setupFile, "r") as f:
             self.setup = yaml.safe_load(f)
+        self.working_dir = self.setup["I/O"]["working-dir"]
+        os.chdir(self.working_dir)
         self.objects = self.setup["Objects"]  # Objects
         self.dim = self.setup["Numerics"]["dim"]  # Dimension
         self.solver = self.setup["Numerics"]["solver"].lower()
-        self.base_case = self.setup["Numerics"]["base-case"].lower()
-        self.run_file = self.setup["Numerics"]["run-file"].lower()
+        self.base_case = self.setup["I/O"]["base-case"].lower()
+        self.run_file = self.setup["I/O"]["run-file"]
         self.amin = float(self.setup["Parameters"]["amin"])
         self.amax = float(self.setup["Parameters"]["amax"])
         self.inc = int(self.setup["Parameters"]["inc"])
         self.inlet_name = str(self.setup["Boundary conditions"]["inlet"]["name"]).lower()
         self.inlet_type = str(self.setup["Boundary conditions"]["inlet"]["type"]).lower()
+        self.post_folder = str(self.setup["I/O"]["post-folder"])
+        if not self.post_folder[-1] == "/":
+            self.post_folder += "/"
+        try:
+            self.I = float(self.setup["Boundary conditions"]["I"])
+        except:
+            self.I = 0.3
 
         # Preprocessing Mode
         if int(self.mode) == 0:
@@ -100,24 +109,24 @@ class Analysis:
             y_1 = yplus * self.nu / u_tau # first layer height
             delta = 0.37 * L * Re**(-0.2)
             l = 0.4 * delta
-            return y_1, delta
+            return y_1, delta, l
 
         # 2. Check if the free-stream is well defined
         if self.setup["Boundary conditions"]["Re"]:
             Re = float(self.setup["Boundary conditions"]["Re"])
             u_inf = Re * self.mu / (L * self.rho)
             Ma = u_inf / self.a
-            y_1, delta = yPlus(self, Re, u_inf)
+            y_1, delta, l = yPlus(self, Re, u_inf)
         elif self.setup["Boundary conditions"]["u"]:
             u_inf = float(self.setup["Boundary conditions"]["u"])
             Re = u_inf * L * self.rho / self.mu
             Ma = u_inf / self.a
-            y_1, delta = yPlus(self, Re, u_inf)
+            y_1, delta, l = yPlus(self, Re, u_inf)
         elif self.setup["Boundary conditions"]["Ma"]:
             Ma = float(self.setup["Boundary conditions"]["Ma"])
             u_inf = Ma * self.a
             Re = u_inf * self.rho * L / self.mu
-            y_1, delta = yPlus(self, Re, u_inf)
+            y_1, delta, l = yPlus(self, Re, u_inf)
         else:
             console.print("\n[bold red]Error: [not bold red]No free-stream Reynolds number, velocity or Mach number defined.")
             sys.exit()
@@ -186,10 +195,10 @@ class Analysis:
         def fluent(self, objDict):
             """Creates a fluent input string"""
             # Initialize all angles as array of angles
-            angles = np.linspace(self.amin, self.amax, self.inc + 1, retstep=True)
+            angles = np.linspace(self.amin, self.amax, self.inc + 1, retstep=False)
 
 
-            # 0. Initialize the input str
+            # 0. Initialize the input str and start the transcript
             inputStr = f"""\
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ;                        AoA Analysis                       ;
@@ -200,25 +209,32 @@ class Analysis:
 ; alpha_max: {self.amax}
 ; increments: {self.inc}
 
+; Opening transcript file 
+/file/start-transcript ../{} o\n\n'.format(self.airfoilName, self.transcriptFilename)
+
 ; Total no. of simulations: {int(len(objDict) * len(angles))}
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ;                    Beginning Analysis...                  ;
-; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;\n
+; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 """
             # 1. Loop over all objects
             for objName, objAttr in objDict.items():
 
-                # 1.1 Calculate dict of ux and uy components
+                # 1.1 Make sure folder exists and set the correct file-name for the output of lift and drag
+                os.system(f"mkdir -p {self.post_folder + objName}")
+
+                # 1.2 Calculate dict of ux and uy components
                 angleDict = {}
                 for angle in angles:
-                    ux = np.cos(np.deg2rad(5)) * objAttr["u_inf"]
-                    uy = np.sin(np.deg2rad(5)) * objAttr["u_inf"]
-                    angleDict[angle] = {"ux": ux, "uy": uy}
+                    angle = round(float(angle), 4)
+                    ux = round(np.cos(np.deg2rad(5)) * objAttr["u_inf"], 4)
+                    uy = round(np.sin(np.deg2rad(5)) * objAttr["u_inf"], 4)
+                    angleDict[str(angle)] = {"ux": ux, "uy": uy}
 
                 # 1.2 Print the current object that will be analyzed
-                inputStr += f"""
+                inputStr += f"""\n
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
-;     Analysing object `{objName}`                 ;
+;              Analysing object `{objName}`
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;"""
 
                 # 1.3 Read in the mesh of that object
@@ -229,28 +245,32 @@ class Analysis:
 """
 
                 # 1.4 Loop over angleDict angles
-                for angle, components in angleDict.items:
+                for angle, components in angleDict.items():
                     # 1.4.1 Set the correct boundary condition according to the calculations for the current angle
                     if self.inlet_type == "velocity-inlet" or "velocity inlet":
                         inputStr += f"""
-; Setting 
-/define/bound/set/velocity/{self.inlet_name}} () dir-0 no {components["ux"]} no dir-1 {components["uy"]} 
+; Setting the velocity components for angle {angle} deg to [ux: {components["ux"]}, uy: {components["uy"]}]
+/define/bound/set/velocity/{self.inlet_name} () dir-0 no {components["ux"]} no dir-1 {components["uy"]} ke-spec no yes turb-len {objAttr["l"]} turb-int {self.I}
 """
                     # TODO: Farfield
                     # elif self.inlet_type == "pressure-far-field" or "pressure far field":
-                    #     pass
+
+                    inputStr += f"""
+; Setting the output folder name for angle {angle} deg to "{self.post_folder}{objName}"
+; Set file for output of DRAG
+/solve/report-files/edit/drag/file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
+; Set file for output of LIFT
+/solve/report-files/edit/lift/file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
+"""
+            # print(inputStr)
+            return inputStr
+
+        #     fluentString += '''/solve/init/hyb\n/solve/it {}\n'''.format(numberOfIterations)  # initial solution
+
 
             # Start transcript in order for the console output to be written to a file
-            # fluentString = ';{}\n/file/start-transcript ../{} o\n\n'.format(self.airfoilName, self.transcriptFilename)
-        #     fluentString += '/file/replace-mesh {} o\n'.format(self.meshFilename)
-        #     fluentString += '/define/bound/set/pres/inlet_farfield () mach n {} ()\n'.format(self.Ma)
 
         #     # First solution at minimum angle:
-        #     fluentString += '''/mesh/rotate {} 0 0 0 0 0 1\n'''.format(-1 * self.aoaMin)  # rotate to initial angle
-        #     fluentString += '''/solve/init/hyb\n/solve/it {}\n'''.format(numberOfIterations)  # initial solution
-        #     fluentString += '''(display "Angle is: {} deg")\n'''.format(self.aoaMin)
-        #     fluentString += '''/report/forces/wall-forces yes 1 0 0 no\n''' # print the drag forces and coefficient
-        #     fluentString += '''/report/forces/wall-forces yes 0 1 0 no\n\n''' # print the lift forces and coefficient
         #     # if generateImages:
         #     #     fluentString += '''/display/views/rest view-0\n/display/objects/display logk\n'''
         #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_logk.png\n'''.format(self.airfoilName, round(self.aoaMin))
@@ -258,20 +278,6 @@ class Analysis:
         #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_u.png\n'''.format(self.airfoilName, round(self.aoaMin))
         #     #     fluentString += '''/display/views/rest view-0\n/display/objects/display p\n'''
         #     #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_p.png\n'''.format(self.airfoilName, round(self.aoaMin))
-
-        #     for i in list(range(len(angleList[0]) - 1)):
-        #         fluentString += '''/mesh/rotate {} 0 0 0 0 0 1\n'''.format(-1 * delta_alpha)  # rotate by steplength
-        #         fluentString += '''/solve/init/hyb o\n/solve/it {}\n'''.format(numberOfIterations)
-        #         fluentString += '''(display "Angle is: {} deg")\n'''.format(round(angleList[0][i + 1], 3))
-        #         fluentString += '''/report/forces/wall-forces yes 1 0 0 no\n'''
-        #         fluentString += '''/report/forces/wall-forces yes 0 1 0 no\n\n'''
-        #         # if generateImages:
-        #         #     fluentString += '''/display/views/rest view-0\n/display/objects/display logk\n'''
-        #         #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_logk.png\n'''.format(self.airfoilName, round(angleList[0][i + 1], 3))
-        #         #     fluentString += '''/display/views/rest view-0\n/display/objects/display u\n'''
-        #         #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_u.png\n'''.format(self.airfoilName, round(angleList[0][i + 1], 3))
-        #         #     fluentString += '''/display/views/rest view-0\n/display/objects/display p\n'''
-        #         #     fluentString += '''/display/save-picture ../res/img/{}_alpha_{}_p.png\n'''.format(self.airfoilName, round(angleList[0][i + 1], 3))
 
         #     fluentString += '/file/stop-transcript\n\n'
         #     self.fluentString  = fluentString
@@ -282,7 +288,7 @@ class Analysis:
         # def su2(self, obj):
 
         if self.solver == "fluent":
-            inputStr = fluent(objDict)
+            inputStr = fluent(self, objDict)
         # elif self.solver == "openfoam":
         #     openfoam()
         # elif self.solver == "su2":
@@ -314,11 +320,14 @@ class Analysis:
         
         # 3. Export calculations if specified
         try:
-            exportFile = self.setup["I/O"]["pre-calculations"]
+            exportFolder = self.setup["I/O"]["pre-folder"]
         except:
-            pass
+            exportFile = "pre/calculations.yaml"
         else:
-            if exportFile:
+            if exportFolder:
+                if not exportFolder[-1] == "/":
+                    exportFolder += "/"
+                exportFile = exportFolder + "calculations.yaml"
                 self.exportCalculations(exportFile, objDict)
 
         # 4. Export input str
