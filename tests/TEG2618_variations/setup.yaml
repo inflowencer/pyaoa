@@ -47,11 +47,11 @@ I/O:
 #                      OBJECTS TO ANALYZE                    #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 Objects:
-  TEG2618_basis:
+  TEG2618:
     L: 0.35 # chord-length in m
     # d: 0.35 # Depth / Width incase of 3D simulation
-    mesh: mesh/TEG2618_basis.cas
+    mesh: mesh/base.cas
     # output: post/TEG2618_basis.cas
   Var1:
     L: 0.355 # chord-length in m
-    mesh: mesh/Var1.cas
+    mesh: mesh/var1.cas
