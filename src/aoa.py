@@ -33,12 +33,12 @@ class Analysis:
         # Read in yaml setup
         with open(setupFile, "r") as f:
             self.setup = yaml.safe_load(f)
-        self.working_dir = self.setup["I/O"]["working-dir"]
         # Folder related stuff
-        os.chdir(self.working_dir)
         self.pre_folder = str(self.setup["I/O"]["pre-folder"])
         self.post_folder = str(self.setup["I/O"]["post-folder"])
         self.run_folder = str(self.setup["I/O"]["run-folder"])
+        self.working_dir = self.setup["I/O"]["working-dir"]
+        os.chdir(self.working_dir)
 
         def folderSlash(folder):
             """Appends '/' if folder isn't specified like that"""
@@ -51,14 +51,16 @@ class Analysis:
         self.pre_folder = folderSlash(self.pre_folder)
         self.post_folder = folderSlash(self.post_folder)
         self.run_folder = folderSlash(self.run_folder)
+        self.working_dir = folderSlash(self.working_dir)
+        self.operating_system = str(self.setup["I/O"]["OS"]).lower()
         
         # Numerics related
         self.dim = self.setup["Numerics"]["dim"]  # Dimension
         self.solver = self.setup["Numerics"]["solver"].lower()
         self.n_iter = int(str(self.setup["Numerics"]["iter"]))
         # I/O related
-        self.base_case = self.setup["I/O"]["base-case"].lower()
-        self.run_file = self.run_folder + self.setup["I/O"]["run-file"]
+        self.base_case = self.run_folder + self.setup["I/O"]["base-case"]
+        self.run_file = self.working_dir + self.run_folder + self.setup["I/O"]["run-file"]
         # Objects and parameter related
         self.objects = self.setup["Objects"]  # Objects
         self.amin = float(self.setup["Parameters"]["amin"])
@@ -220,6 +222,7 @@ class Analysis:
             # Initialize all angles as array of angles
             angles = np.linspace(self.amin, self.amax, self.inc + 1, retstep=False)
 
+
             # 0. Initialize the input str and start the transcript
             inputStr = f"""\
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
@@ -231,12 +234,13 @@ class Analysis:
 ; alpha_max: {self.amax}
 ; increments: {self.inc}
 
-
 ; Total no. of simulations: {int(len(objDict) * len(angles))}
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ;                    Beginning Analysis...                  ;
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
-"""
+; Reading in Base Case
+/file/read-case {self.base_case}
+""" # sync-chdir ../
             # 1. Loop over all objects
             for objName, objAttr in objDict.items():
 
@@ -263,7 +267,7 @@ class Analysis:
                 mesh = self.setup["Objects"][objName]["mesh"]
                 inputStr += f"""
 ; Reading in mesh from {mesh}
-/file/replace-mesh {mesh} o
+/file/replace-mesh {mesh} o ()
 """
 
                 # 1.4 Loop over angleDict angles
@@ -273,7 +277,8 @@ class Analysis:
 # ; Setting the velocity components for angle {angle} deg to [ux: {components["ux"]}, uy: {components["uy"]}]
                         inputStr += f"""
 ; Angle: {angle} deg
-/define/bound/set/velocity/{self.inlet_name} () dir-0 no {components["ux"]} no dir-1 {components["uy"]} ke-spec no yes turb-len {objAttr["l"]} turb-int {self.I}
+(display "Angle is: {angle} deg")
+/define/bound/set/velocity/{self.inlet_name} () dir-0 no {components["ux"]} dir-1 no {components["uy"]} ke-spec no yes turb-len {objAttr["l"]} turb-int {self.I} ()
 """
                     # TODO: Farfield
                     # elif self.inlet_type == "pressure-far-field" or "pressure far field":
@@ -282,12 +287,12 @@ class Analysis:
 # ; Set file for output of DRAG
 # ; Set file for output of LIFT
                     inputStr += f"""\
-/solve/report-files/edit/drag/file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
-/solve/report-files/edit/lift/file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
+/solve/report-files/edit drag file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
+/solve/report-files/edit lift file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
 """
                     # 1.5 Initialize the solution
                     inputStr += f"""\
-/solve/init/hyb\n/solve/it {self.n_iter}\n"""
+/solve/init/hyb o ()\n/solve/it {self.n_iter}\n"""
 
                 # 1.6 Stop transcript for this object
                 inputStr += f"""
@@ -333,14 +338,12 @@ class Analysis:
         
         # 3. Export calculations if specified
         try:
-            exportFolder = self.setup["I/O"]["pre-folder"]
+            exportFolder = self.pre_folder
         except:
-            exportFile = "pre/calculations.yaml"
+            exportFile = f"pre/calculations.yaml"
             self.exportCalculations(exportFile, objDict)
         else:
             if exportFolder:
-                if not exportFolder[-1] == "/":
-                    exportFolder += "/"
                 exportFile = exportFolder + "calculations.yaml"
                 self.exportCalculations(exportFile, objDict)
 
@@ -351,6 +354,22 @@ class Analysis:
 
         
     
+
+    # TODO: CLEAR RETARDED FLUENT FILES (*.trn *.out *.bat)
+    def cleanFolder(self):
+        pass
+
+    # TODO: CLEAR PREVIOUS RESULTS
+    def cleanFolder(self):
+        pass
+
+
+    def createRunScript(self, np, gui=False):
+        runScript = ""
+        # Use working directory to launch fluent there
+        if self.operating_system == "windows":
+            win_path = os.system(f"wslpath -w {self.working_dir}")
+            runScript += f"cd \"{win_path}\""
 
 
 # SCRATCH

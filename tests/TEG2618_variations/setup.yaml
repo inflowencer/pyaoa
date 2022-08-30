@@ -43,6 +43,7 @@ I/O:
   # Files:
   run-file: TEG2618_variations.jou # Name of the input file for the analysis, will be written to the `run-folder`
   base-case: 2d_base-inc.cas.h5 # Name of base case
+  OS: windows # Operating system where the CFD solver is run
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -50,8 +51,8 @@ Objects:
   TEG2618:
     L: 0.35 # chord-length in m
     # d: 0.35 # Depth / Width incase of 3D simulation
-    mesh: mesh/base.cas
+    mesh: pre/mesh/base.cas
     # output: post/TEG2618_basis.cas
   Var1:
     L: 0.355 # chord-length in m
-    mesh: mesh/var1.cas
+    mesh: pre/mesh/var1.cas
