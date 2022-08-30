@@ -356,14 +356,20 @@ class Analysis:
     
 
     # TODO: CLEAR RETARDED FLUENT FILES (*.trn *.out *.bat)
-    def cleanFolder(self):
+    def cleanFluentFiles(self):
         pass
 
     # TODO: CLEAR PREVIOUS RESULTS
-    def cleanFolder(self):
+    def cleanResults(self):
+        if self.cleanResults:
+            pass
+            # for folder in ...
+        else:
+            print("Found result files from a previous simulation! Aborting...")
         pass
 
 
+    # TODO: DEPENDING ON THE PLATFORM, CREATE A RUNSCRIPT TO START THE WHOLE SIMULATION
     def createRunScript(self, np, gui=False):
         runScript = ""
         # Use working directory to launch fluent there
