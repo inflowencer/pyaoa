@@ -421,12 +421,12 @@ class Analysis:
             win_path = result.stdout[:-1]
             win_path = win_path.decode("UTF-8")
             self.script_path = f"{self.run_folder}run_script.bat"
-            runScript = f"cd /d \"{win_path}\"\n"
+            runScript = f"cd \"{win_path}\"\n"
             jouFile = self.run_folder + self.setup["I/O"]["run-file"]
             if str(self.dim.lower()) == "2d" or "2":
-                runScript += f"fluent 2ddp -t{self.np} < {jouFile}"
+                runScript += f"fluent 2ddp -g -t{self.np} < {jouFile}"
             else:
-                runScript += f"fluent 3ddp -t{self.np} < {jouFile}"
+                runScript += f"fluent 3ddp -g -t{self.np} < {jouFile}"
             with open(self.script_path, "w") as f:
                 f.write(runScript)
             console.print(f"Run script written to:       \'{self.script_path}\'")
