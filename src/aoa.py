@@ -5,6 +5,8 @@ import re
 import sys
 import os
 import yaml
+import subprocess
+import glob
 
 # Rich printing
 from rich.console import Console
@@ -124,7 +126,6 @@ class Analysis:
         else:
             d = 1.0
 
-
         # TODO: TRANSONIC AND HIGHER MACH NUMBER FLOWS
         def yPlus(self, Re, u_inf):
             C_f = 0.0576 * Re**(-0.2)  # skin friction coefficient
@@ -159,6 +160,18 @@ class Analysis:
         A = d * L
 
         return y_1, round(Ma, 3), round(delta, 5), A, round(Re, 1), round(u_inf, 4), L, round(l, 5)
+
+
+    def ObjAttr(self):
+        objDict = {}
+        for obj in self.objects.keys():
+            y_1, Ma, delta, A, Re, u_inf, L, l = self.objectCalculations(obj)
+            objDict[obj] = {
+                "y_1": float(y_1), "delta": float(delta), "A": float(A),
+                "Re": float(Re), "Ma": float(Ma), "u_inf": float(u_inf),
+                "L": float(L), "l": float(l)
+            }
+        return objDict
 
 
     def exportCalculations(self, exportFile, objDict):
@@ -256,6 +269,8 @@ class Analysis:
                     angle = round(float(angle), 4)
                     ux = round(np.cos(np.deg2rad(angle)) * objAttr["u_inf"], 4)
                     uy = round(np.sin(np.deg2rad(angle)) * objAttr["u_inf"], 4)
+                    Fx = round(np.cos(np.deg2rad(angle)) * 1, 4)  # Force components
+                    Fy = round(np.sin(np.deg2rad(angle)) * 1, 4)  # Force components
                     angleDict[str(angle)] = {"ux": ux, "uy": uy}
 
                 # 1.2 Print the current object that will be analyzed
@@ -287,11 +302,12 @@ class Analysis:
                     # elif self.inlet_type == "pressure-far-field" or "pressure far field":
 
 # ; Setting the output folder name for angle {angle} deg to "{self.post_folder}{objName}"
-# ; Set file for output of DRAG
-# ; Set file for output of LIFT
+# ; Setting the correct velocity vector components
                     inputStr += f"""\
 /solve/report-files/edit drag file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
+/solve/report-definitions/edit/drag force-vector {Fx} {Fy} ()
 /solve/report-files/edit lift file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
+/solve/report-definitions/edit/lift force-vector {Fx} {Fy} ()
 """
                     # 1.5 Initialize the solution
                     inputStr += f"""\
@@ -318,6 +334,8 @@ class Analysis:
         return inputStr
 
 
+
+
     def Pre(self):
         """Preprocessing method"""
 
@@ -328,14 +346,8 @@ class Analysis:
 
         # 2. Create objects to analyze, calculate their specific attributes
         #    and generate the runFile String
-        objDict = {}
-        for obj in self.objects.keys():
-            y_1, Ma, delta, A, Re, u_inf, L, l = self.objectCalculations(obj)
-            objDict[obj] = {
-                "y_1": float(y_1), "delta": float(delta), "A": float(A),
-                "Re": float(Re), "Ma": float(Ma), "u_inf": float(u_inf),
-                "L": float(L), "l": float(l)
-            }
+
+        objDict = self.ObjAttr()
 
         inputStr = self.runFileStr(objDict)
         
@@ -357,14 +369,23 @@ class Analysis:
 
         # 5. Input File
         if self.run_script:
-            with open(self.run_file, "w") as f:
-                f.write(inputStr)
-                console.print(f"Run script written to:     \'{self.script_path}\'")
+            self.createRunScript()
 
         
     def clearFluentFiles(self):
         """Clears all Fluent files that have been written"""
-        os.remove("*.trn run/*.out pre/mesh/*.trn pre/mesh/*.log")
+        # get a recursive list of file paths that matches pattern including sub directories
+        trn_files = glob.glob(f"{self.working_dir}/**/*.trn", recursive=True)
+        log_files = glob.glob(f"{self.working_dir}/**/*.log", recursive=True)
+        hist_files = glob.glob(f"{self.working_dir}/**/*.hist", recursive=True)
+
+        fileList = trn_files + log_files + hist_files
+        # Iterate over the list of filepaths & remove each file.
+        for filePath in fileList:
+            try:
+                os.remove(filePath)
+            except:
+                pass
         
 
     def clearResults(self):
@@ -394,16 +415,21 @@ class Analysis:
 
     def createRunScript(self):
         """Creates a Run script to automatically run the simulation depending on the platform"""
+        console = Console()
         if self.operating_system == "windows":
-            win_path = os.system(f"wslpath -w {self.working_dir}")
+            result = subprocess.run(['wslpath', '-w', self.working_dir], stdout=subprocess.PIPE)
+            win_path = result.stdout[:-1]
+            win_path = win_path.decode("UTF-8")
             self.script_path = f"{self.run_folder}run_script.bat"
-            runScript += f"cd \"{win_path}\""
+            runScript = f"cd /d \"{win_path}\"\n"
+            jouFile = self.run_folder + self.setup["I/O"]["run-file"]
             if str(self.dim.lower()) == "2d" or "2":
-                runScript += f"fluent 2ddp -t{self.np} < {self.run_file}"
+                runScript += f"fluent 2ddp -t{self.np} < {jouFile}"
             else:
-                runScript += f"fluent 3ddp -t{self.np} < {self.run_file}"
+                runScript += f"fluent 3ddp -t{self.np} < {jouFile}"
             with open(self.script_path, "w") as f:
                 f.write(runScript)
+            console.print(f"Run script written to:       \'{self.script_path}\'")
             
 
     def Post(self):
@@ -441,26 +467,47 @@ class Analysis:
                 # Initialize postDict for all objects
                 # Each object in the objResDict() has a key for each AOA and a corresponding df for lift and drag
                 AOA_dict = {}
+
+                # 1. Get all AOAs
+                AOA_list = []
                 for f in files:
-                    # 1. Get the current AOA
                     num_list = re.findall('-?\d+\.?\d*', f)
-                    current_AOA = num_list[0]
-                    # 2. Get all files which contain the AOA in their name
-                    for _ in files:
-                        if not f"{current_AOA}" in _:
-                            continue
-                        if "drag" in _.lower():
-                            df_drag, avg_drag = fluentToDataFrame(self, f, "drag")
-                        elif "lift" in _.lower():
-                            df_lift, avg_lift = fluentToDataFrame(self, f, "lift")
-                    # 3. Append it to the AOA Dict
-                    AOA_dict[float(current_AOA)] = {"drag": {"df": df_drag, "avg": avg_drag}, "lift": {"df": df_lift, "avg": avg_lift}}
-                    # 4. Delete files in list that have now been used already
-                    for _ in files:
-                        if f"{current_AOA}" in files:
-                            files.remove(_)
-                
-                sorted_AOA_list = sorted(AOA_dict.keys())
+                    aoa = num_list[0]
+                    if not float(aoa) in AOA_list:
+                        AOA_list.append(float(aoa))
+                AOA_list = sorted(AOA_list)
+
+                # 2. Loop over each angle and append to AOA_dict of this object
+                for angle in AOA_list:
+                    for f in files:
+                        if str(angle) in f:
+                            if not angle in AOA_dict.keys():
+                                AOA_dict[angle] = {"drag": {"df": 0, "avg": 0}, "lift": {"df": 0, "avg": 0}}
+                            if "drag" in f.lower():
+                                df_drag, avg_drag = fluentToDataFrame(self, f, "drag")
+                                AOA_dict[angle]["drag"] = {"df": df_drag, "avg": avg_drag}
+                            elif "lift" in f.lower():
+                                df_lift, avg_lift = fluentToDataFrame(self, f, "lift")
+                                AOA_dict[angle]["lift"] = {"df": df_lift, "avg": avg_lift}
+
+
+                # 3. Initialize a clean df which we can later export as a csv
+                clean_drag = []
+                clean_lift = []
+                for angle in AOA_list:
+                    clean_drag.append(AOA_dict[angle]["drag"]["avg"])
+                    clean_lift.append(AOA_dict[angle]["lift"]["avg"])
+                clean_df = pd.DataFrame({"alpha": AOA_list, "drag_force": clean_drag, "lift_force": clean_lift})
+
+                # 4. Calculate cd and cl based on the objects' properties
+                self.ambientConditions()
+                objDict = self.ObjAttr()
+                clean_df["cd"] = clean_df["drag_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
+                clean_df["cl"] = clean_df["lift_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
+
+                console.print(clean_df)
+                # 4. Append DF objResDict
+                objResDict[obj] = clean_df
 
 
 
