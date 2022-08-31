@@ -1,3 +1,4 @@
+from curses import raw
 import numpy as np
 import pandas as pd
 import re
@@ -19,7 +20,6 @@ from rich.layout import Layout
 # Matplotlib related
 import matplotlib.pyplot as plt
 plt.style.use('science')
-
 
 class Analysis:
     """Angle-of-Attack Analysis class for Pre- and Postprocessing"""
@@ -58,14 +58,17 @@ class Analysis:
         self.dim = self.setup["Numerics"]["dim"]  # Dimension
         self.solver = self.setup["Numerics"]["solver"].lower()
         self.n_iter = int(str(self.setup["Numerics"]["iter"]))
+        self.np = int(str(self.setup["Numerics"]["np"]))
         # I/O related
         self.base_case = self.run_folder + self.setup["I/O"]["base-case"]
         self.run_file = self.working_dir + self.run_folder + self.setup["I/O"]["run-file"]
+        self.run_script = self.setup["I/O"]["run-script"]
         # Objects and parameter related
         self.objects = self.setup["Objects"]  # Objects
         self.amin = float(self.setup["Parameters"]["amin"])
         self.amax = float(self.setup["Parameters"]["amax"])
         self.inc = int(self.setup["Parameters"]["inc"])
+        self.avg = int(self.setup["Parameters"]["avg"])
         # Boundary condition related
         self.inlet_name = str(self.setup["Boundary conditions"]["inlet"]["name"]).lower()
         self.inlet_type = str(self.setup["Boundary conditions"]["inlet"]["type"]).lower()
@@ -74,7 +77,7 @@ class Analysis:
         except:
             self.I = 0.3
 
-        # Preprocessing Mode
+        # Execute the pre- or postprocessing mode
         if int(self.mode) == 0:
             self.Pre()
         elif int(self.mode) == 1:
@@ -261,7 +264,7 @@ class Analysis:
 ;              Analysing object `{objName}`
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ; Opening transcript...
-/file/start-transcript run/{objName}"""
+/file/start-transcript run/{objName}.out"""
 
                 # 1.3 Read in the mesh of that object
                 mesh = self.setup["Objects"][objName]["mesh"]
@@ -352,32 +355,120 @@ class Analysis:
             f.write(inputStr)
             console.print(f"Input file written to:       \'{self.run_file}\'")
 
+        # 5. Input File
+        if self.run_script:
+            with open(self.run_file, "w") as f:
+                f.write(inputStr)
+                console.print(f"Run script written to:     \'{self.script_path}\'")
+
         
-    
+    def clearFluentFiles(self):
+        """Clears all Fluent files that have been written"""
+        os.remove("*.trn run/*.out pre/mesh/*.trn pre/mesh/*.log")
+        
 
-    # TODO: CLEAR RETARDED FLUENT FILES (*.trn *.out *.bat)
-    def cleanFluentFiles(self):
-        pass
+    def clearResults(self):
+        previousResults = False
+        for obj in self.objects.keys():
+            # First check if the path already exists and if yes check if its empty
+            objResFolder = f"{self.post_folder}{obj}"
+            if os.path.exists(objResFolder):
+                contents = os.listdir(objResFolder)
+                if contents:
+                    previousResults = True
+                    break
+        # If results have been found, clear them 
+        if contents:
+            self.clearRes = Prompt.ask("[bright_white]Previous results have been found, would you like to clear them?", choices=["y", "n"], default="y")
+            if self.clearRes:
+                for obj in self.objects.keys():
+                    try:
+                        os.rmdir(f"post/{obj}")
+                    except:
+                        pass
+                    try:
+                        os.remove(f"run/{obj}.hist")
+                    except:
+                        pass
+        
 
-    # TODO: CLEAR PREVIOUS RESULTS
-    def cleanResults(self):
-        if self.cleanResults:
-            pass
-            # for folder in ...
-        else:
-            print("Found result files from a previous simulation! Aborting...")
-        pass
-
-
-    # TODO: DEPENDING ON THE PLATFORM, CREATE A RUNSCRIPT TO START THE WHOLE SIMULATION
-    def createRunScript(self, np, gui=False):
-        runScript = ""
-        # Use working directory to launch fluent there
+    def createRunScript(self):
+        """Creates a Run script to automatically run the simulation depending on the platform"""
         if self.operating_system == "windows":
             win_path = os.system(f"wslpath -w {self.working_dir}")
+            self.script_path = f"{self.run_folder}run_script.bat"
             runScript += f"cd \"{win_path}\""
+            if str(self.dim.lower()) == "2d" or "2":
+                runScript += f"fluent 2ddp -t{self.np} < {self.run_file}"
+            else:
+                runScript += f"fluent 3ddp -t{self.np} < {self.run_file}"
+            with open(self.script_path, "w") as f:
+                f.write(runScript)
+            
+
+    def Post(self):
+        """Post-processing method"""
+        console = Console()
+        objResDict = {}
+        # First prepare the raw output data depending on the solver
+        if self.solver == "fluent":
+            for obj in self.objects:
+                objResFolder = f"{self.post_folder}{obj}"
+                if not objResFolder[-1] == "/":
+                    objResFolder += "/"
+                if not os.path.exists(objResFolder):
+                    console.print(f"[bold red]Error:[not bold bright_white] Result folder for {obj} not found...")
+                    sys.exit()
+                files = os.listdir(objResFolder)
+                if not files:
+                    console.print(f"[bold red]Error:[not bold bright_white] Result files for {obj} not found...")
+                    sys.exit()
+
+                def fluentToDataFrame(self, raw_file, quantity):
+                    """Converts raw fluent .out files to a dataframe"""
+
+                    df = pd.read_csv(f"{objResFolder}{raw_file}", sep=" ", skiprows=2)
+
+                    if len(df.columns) == 2:
+                        df.columns = ["iter", f"{quantity}"]
+                    elif len(df.columns) > 2:
+                        df.columns = ["iter", f"{quantity}", f"{quantity}_inst"]
+
+                    avg = np.mean(df[f"{quantity}"].iloc[-self.avg:].values)
+
+                    return df, avg
+
+                # Initialize postDict for all objects
+                # Each object in the objResDict() has a key for each AOA and a corresponding df for lift and drag
+                AOA_dict = {}
+                for f in files:
+                    # 1. Get the current AOA
+                    num_list = re.findall('-?\d+\.?\d*', f)
+                    current_AOA = num_list[0]
+                    # 2. Get all files which contain the AOA in their name
+                    for _ in files:
+                        if not f"{current_AOA}" in _:
+                            continue
+                        if "drag" in _.lower():
+                            df_drag, avg_drag = fluentToDataFrame(self, f, "drag")
+                        elif "lift" in _.lower():
+                            df_lift, avg_lift = fluentToDataFrame(self, f, "lift")
+                    # 3. Append it to the AOA Dict
+                    AOA_dict[float(current_AOA)] = {"drag": {"df": df_drag, "avg": avg_drag}, "lift": {"df": df_lift, "avg": avg_lift}}
+                    # 4. Delete files in list that have now been used already
+                    for _ in files:
+                        if f"{current_AOA}" in files:
+                            files.remove(_)
+                
+                sorted_AOA_list = sorted(AOA_dict.keys())
+
 
 
 # SCRATCH
         # self, airfoilName, ambientConditions, L, yplus=0.2, aoaMin=-5.0, aoaMax=10.0, numberOfIncrements=10, inputFilename='',
         # transcriptFilename='', resultFilename='', expData=False, plotFilename='', meshFilename='', experimentalDataFilename=''
+
+# else:
+#     quantity = Prompt.ask("[bright_white]Couldn't determine which quantity should be analyzed.\n[green]Please enter the quantity name")
+#     df = fluentToDataFrame(self, f, quantity)
+#     files.remove(_)

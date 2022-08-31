@@ -23,6 +23,7 @@ Numerics:
   dim: 2d
   type: incompressible # [incompressible (Ma < 0.2), compressible (0.2 < Ma < 0.5), transonic (0.5 < Ma < 1.2), supersonic (1.2 < Ma < 5), hypersonic (Ma > 5)]
   iter: 1000 # Number of iterations (int)
+  np: 10 # Number of processors
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                       PARAMETERS SPACE                     #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -30,11 +31,12 @@ Parameters:
   amin: -5 # Minimum angle-of-attack
   amax: 15 # Maximum angle-of-attack
   inc: 5 # Number of increments
+  avg: 100 # Number of iterations to average over
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                           FILE I/O                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 I/O:
-  working-dir: /home/joe/airfoil_lab/project_db/projects/software/iikj/tests/TEG2618_variations # Should be an absolute path
+  working-dir: /home/rap7or/airfoil_lab/project_db/projects/software/iikj/tests/TEG2618_variations # Should be an absolute path
   # All paths specified below are relative from this location. Consider the same folder structure as in the examples
   # Folders:
   pre-folder: pre/
@@ -44,6 +46,7 @@ I/O:
   run-file: TEG2618_variations.jou # Name of the input file for the analysis, will be written to the `run-folder`
   base-case: 2d_base-inc.cas.h5 # Name of base case
   OS: windows # Operating system where the CFD solver is run
+  run-script: yes
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -53,6 +56,6 @@ Objects:
     # d: 0.35 # Depth / Width incase of 3D simulation
     mesh: pre/mesh/base.cas
     # output: post/TEG2618_basis.cas
-  Var1:
-    L: 0.355 # chord-length in m
-    mesh: pre/mesh/var1.cas
+  # Var1:
+  #   L: 0.355 # chord-length in m
+  #   mesh: pre/mesh/var1.cas
