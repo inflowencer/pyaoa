@@ -432,6 +432,10 @@ class Analysis:
             with open(self.script_path, "w") as f:
                 f.write(runScript)
             console.print(f"Run script written to:       \'{self.script_path}\'")
+
+
+    def Plot(self):
+        """Method to plot depending on the setup.yaml"""
             
 
     def Post(self):
@@ -441,7 +445,6 @@ class Analysis:
         # First prepare the raw output data depending on the solver
         if self.solver == "fluent":
             for obj in self.objects:
-                print(obj)
                 objResFolder = f"{self.post_folder}{obj}"
                 if not objResFolder[-1] == "/":
                     objResFolder += "/"
@@ -511,8 +514,10 @@ class Analysis:
                 # console.print(clean_df)
                 # 4. Append DF objResDict
                 objResDict[obj] = clean_df
-                plt.plot(clean_df["alpha"], clean_df["cl"])
-                plt.show()
+                plt.plot(clean_df["cd"], clean_df["cl"])
+                plt.grid()
+                plt.savefig("test.png")
+                # console.print
 
 
 
