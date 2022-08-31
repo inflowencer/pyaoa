@@ -267,11 +267,13 @@ class Analysis:
                 angleDict = {}
                 for angle in angles:
                     angle = round(float(angle), 4)
+                    # x-component
                     ux = round(np.cos(np.deg2rad(angle)) * objAttr["u_inf"], 4)
+                    Fx = round(np.cos(np.deg2rad(angle)), 4)  # Force components
+                    # y-component
                     uy = round(np.sin(np.deg2rad(angle)) * objAttr["u_inf"], 4)
-                    Fx = round(np.cos(np.deg2rad(angle)) * 1, 4)  # Force components
-                    Fy = round(np.sin(np.deg2rad(angle)) * 1, 4)  # Force components
-                    angleDict[str(angle)] = {"ux": ux, "uy": uy}
+                    Fy = round(np.sin(np.deg2rad(angle)), 4)  # Force components
+                    angleDict[str(angle)] = {"ux": ux, "Fx": Fx, "uy": uy, "Fy": Fy}
 
                 # 1.2 Print the current object that will be analyzed
                 inputStr += f"""\n
@@ -305,9 +307,9 @@ class Analysis:
 # ; Setting the correct velocity vector components
                     inputStr += f"""\
 /solve/report-files/edit drag file {self.post_folder}{objName}/alpha_{angle}_drag.out ()
-/solve/report-definitions/edit/drag force-vector {Fx} {Fy} ()
+/solve/report-definitions/edit/drag force-vector {components["Fx"]} {components["Fy"]} ()
 /solve/report-files/edit lift file {self.post_folder}{objName}/alpha_{angle}_lift.out ()
-/solve/report-definitions/edit/lift force-vector {Fx} {Fy} ()
+/solve/report-definitions/edit/lift force-vector {components["Fy"]} {components["Fx"]} ()
 """
                     # 1.5 Initialize the solution
                     inputStr += f"""\
@@ -439,6 +441,7 @@ class Analysis:
         # First prepare the raw output data depending on the solver
         if self.solver == "fluent":
             for obj in self.objects:
+                print(obj)
                 objResFolder = f"{self.post_folder}{obj}"
                 if not objResFolder[-1] == "/":
                     objResFolder += "/"
@@ -505,9 +508,11 @@ class Analysis:
                 clean_df["cd"] = clean_df["drag_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
                 clean_df["cl"] = clean_df["lift_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
 
-                console.print(clean_df)
+                # console.print(clean_df)
                 # 4. Append DF objResDict
                 objResDict[obj] = clean_df
+                plt.plot(clean_df["alpha"], clean_df["cl"])
+                plt.show()
 
 
 
