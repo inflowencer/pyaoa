@@ -3,7 +3,7 @@
 ### Boundary conditions
 
 | Symbol | Name (unit) | Description |
-| --| ----- | ----------------------------------- |
+| --| ------ | --------------------- |
 | Re | Reynolds number (-) | Free stream Reynolds number $\text{Re} = \frac{u L \rho}{\mu}$ |
 | d | 2D Object depth (m) | For calculating the forces and area in 2D simulations |
 | T | Free stream temperature (K) | Static temperature in the free stream |

@@ -64,6 +64,7 @@ class Analysis:
         self.base_case = self.run_folder + self.setup["I/O"]["base-case"]
         self.run_file = self.working_dir + self.run_folder + self.setup["I/O"]["run-file"]
         self.run_script = self.setup["I/O"]["run-script"]
+        self.export_csv = self.setup["I/O"]["export-csv"]
         # Objects and parameter related
         self.objects = self.setup["Objects"]  # Objects
         self.amin = float(self.setup["Parameters"]["amin"])
@@ -449,16 +450,100 @@ class Analysis:
         try:
             self.plot_type = self.setup["Plot"]["type"]
         except:
-            self.plot_type = "single"
+            self.plot_type = "both"
 
+        # 3. Determine the layout
+        try:
+            self.plot_layout = self.setup["Plot"]["layout"]
+        except:
+            self.plot_layout = "side-to-side"
 
+        # 4. Determine the export file type
+        try:
+            self.plot_ftype = self.setup["Plot"]["export"]
+        except:
+            self.plot_ftype = "png"
+
+        # 5. Functions for plotting
         def alpha_cl(self):
             """Plotting AOA-Cl"""
 
 
+        # 8. Initialize the plot based on the settings
+        fig, axs = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
+        # if self.plot_type.lower() == "both":
+        #     if self.plot_layout.lower() == "side-to-side":
+        #     else:
+
+
+        # 10. Loop over all objects
+        for obj in self.plotObjList:
+            # 10.1 Determine if there's reference data available
+            try:
+                ref_data = self.setup["Plot"][obj]["ref-data"]
+            except:
+                ref_data = False
+            else:
+                df_ref = pd.read_csv(ref_data, sep=",")
+            objResFolder = f"{self.post_folder}{obj}"
+            if not objResFolder[-1] == "/":
+                objResFolder += "/"
+            if not os.path.exists(objResFolder):
+                console.print(f"[bold red]Error:[not bold bright_white] Result folder for {obj} not found...")
+                sys.exit()
+
+            # Read in CSV
+            df = pd.read_csv(f"{objResFolder}{obj}.csv", sep=",")
+
+            # Cl/AOA polar Layout
+            axs[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs[0].set_xlabel(r'Angle of attack $\alpha$')
+            axs[0].set_ylabel(r'Lift coeffient $c_l$')
+            axs[0].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+            axs[0].plot(df['alpha'], df['cl'], label=f"{obj}")
+            if ref_data:
+                axs[0].scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"{obj} ref.")
+
+            # Cl/Cd (Lilienthal) Layout
+            axs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs[1].set_xlabel(r'Drag coefficient $c_d$')
+            axs[1].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+
+        leg = plt.legend()
+    
+            
+
+
+
+#     # leg.get_lines()[0].set_linewidth(0.2)
+
+#     for airfoil in airfoils:
+#         # If not data has been read in already
+#         # if airfoil.df_sim.empty():
+#         #     airfoil.df_sim = pd.read_csv(f'airfoil-data/{airfoil.airfoilName}_sim.csv', sep=',')
+
+#         if airfoil.expData:
+#             airfoil.df_exp = pd.read_csv("airfoil-data/" + airfoil.airfoilName + "_exp.csv", sep=',')
+
+#         if plotType == 'polar-and-lilienthal':
+#             # Polar
+#             if airfoil.expData:
+
+#             # Lilienthal
+#             axs[1].plot(airfoil.df_sim['cd'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
+#             if airfoil.expData:
+#                 axs[1].scatter(airfoil.df_exp['cd'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')  # Experimental data
+
+
+#     # leg = axs[1].legend(facecolor='white', frameon=True, framealpha=1)
+#     leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+#     fig.savefig(plotFilename, dpi=300)
+
         # plt.plot(clean_df["cd"], clean_df["cl"])
         # plt.grid()
         # plt.savefig("test.png")
+    
             
 
     def Post(self):
@@ -534,10 +619,13 @@ class Analysis:
                 clean_df["cd"] = clean_df["drag_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
                 clean_df["cl"] = clean_df["lift_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
 
+                if self.export_csv == True:
+                    clean_df.to_csv(f"{objResFolder}{obj}.csv", sep=',', header=True, index=False)
                 # console.print(clean_df)
                 # 4. Append DF objResDict
-                objResDict[obj] = clean_df
+                # objResDict[obj] = clean_df
                 # console.print
+        
 
 
 
@@ -563,58 +651,3 @@ class Analysis:
 #     '''
 #     # Initialize plot
 #     fig, axs = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
-
-#     # Check if plotlimits are defined and if yes which ones
-#     if plotLimits:
-#         activeLimits = dict.fromkeys( ['xmin_aoa', 'xmax_aoa', 'xmin_cd', 'xmax_cd', 'ymin_cl', 'ymax_cl'] )
-#         for key, value in activeLimits.items():
-#             if key in plotLimits:
-#                 activeLimits[key] = plotLimits[key]
-#         # Set aoa xlimits if defined
-#         if activeLimits['xmin_aoa'] and activeLimits['xmax_aoa']:
-#             axs[0].set_xlim(activeLimits['xmin_aoa'], activeLimits['xmax_aoa'])
-#         # Set cd ylimits if defined
-#         if activeLimits['ymin_cl'] and activeLimits['ymax_cl']:
-#             axs[0].set_ylim(activeLimits['ymin_cl'], activeLimits['ymax_cl'])
-#         axs[0].set_ylabel(r'Lift coefficient $c_l$')
-#         # Set cd xlimits if defined
-#         if activeLimits['xmin_cd'] and activeLimits['xmax_cd']:
-#             axs[1].set_xlim(activeLimits['xmin_cd'], activeLimits['xmax_cd'])
-
-#     # aoa-Lift polar
-#     axs[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
-#     axs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
-#     axs[0].set_xlabel(r'Angle of attack $\alpha$')
-#     axs[0].set_ylabel(r'Lift coeffient $c_l$')
-#     axs[0].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
-
-#     # cd-cl (Lilienthal)
-#     axs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
-#     axs[1].set_xlabel(r'Drag coefficient $c_d$')
-#     axs[1].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
-
-#     # leg.get_lines()[0].set_linewidth(0.2)
-
-#     for airfoil in airfoils:
-#         # If not data has been read in already
-#         # if airfoil.df_sim.empty():
-#         #     airfoil.df_sim = pd.read_csv(f'airfoil-data/{airfoil.airfoilName}_sim.csv', sep=',')
-
-#         if airfoil.expData:
-#             airfoil.df_exp = pd.read_csv("airfoil-data/" + airfoil.airfoilName + "_exp.csv", sep=',')
-
-#         if plotType == 'polar-and-lilienthal':
-#             # Polar
-#             axs[0].plot(airfoil.df_sim['alpha'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
-#             if airfoil.expData:
-#                 axs[0].scatter(airfoil.df_exp['alpha'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')   # Experimental data
-
-#             # Lilienthal
-#             axs[1].plot(airfoil.df_sim['cd'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
-#             if airfoil.expData:
-#                 axs[1].scatter(airfoil.df_exp['cd'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')  # Experimental data
-
-
-#     # leg = axs[1].legend(facecolor='white', frameon=True, framealpha=1)
-#     leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
-#     fig.savefig(plotFilename, dpi=300)

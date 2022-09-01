@@ -67,7 +67,15 @@ Plot:
   NACA0012:
     ref-data: post/NACA0012/ref/NACA0012_Re_8e5.csv
 
-  # - Basis
-  type: both  # [both, lilienthal, lift, drag]
-  layout: single # [single, side-to-side]
-  export: png # [pdf, png, html]
+  # types: # [both, lilienthal, lift, drag]
+  # layout: side-to-side # [single, side-to-side]
+  # sharey: yes
+  # export: png # [pdf, png, html]
+  # cd:
+  #   xlims: [0, 0.1] 
+  #   # ylims: [0, 0.1] # Not needed when type "both"
+  # cl:
+  #   xlims: [-5, 15] 
+  #   ylims: [-0.2, 1.4]
+  #   x-title: Angle of attack $\alpha$
+  #   y-title: Lift coefficient $c_l$
