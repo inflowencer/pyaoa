@@ -47,7 +47,7 @@ I/O:
   base-case: 2d_base-inc.cas.h5 # Name of base case
   OS: windows # Operating system where the CFD solver is run
   run-script: yes # Platform dependendt run script (.bat for Windows, .sh for Linux) export to the `run-folder`
-  export-csv: no # If a .csv file should be exported
+  export-csv: yes # If a .csv file should be exported
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 #                      OBJECTS TO ANALYZE                    #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
@@ -55,7 +55,7 @@ Objects:
   NACA0012:
     L: 1.0 # chord-length in m
     # d: 0.35 # Depth / Width incase of 3D simulation
-    mesh: pre/mesh/S1210.cas
+    # mesh: pre/mesh/S1210.cas
     # output: post/TEG2618_basis.cas
   # Var1:
   #   L: 0.355 # chord-length in m
@@ -64,8 +64,10 @@ Objects:
 #                           PLOTTING                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 Plot:
-  objects:
-  - NACA0012
+  NACA0012:
+    ref-data: post/NACA0012/ref/NACA0012_Re_8e5.csv
+
   # - Basis
   type: both  # [both, lilienthal, lift, drag]
-  
+  layout: single # [single, side-to-side]
+  export: png # [pdf, png, html]

@@ -435,6 +435,30 @@ class Analysis:
 
     def Plot(self):
         """Method to plot depending on the setup.yaml"""
+        console = Console()
+        # 1. Try to read the objects which shall be plotted otherwise use the objects to analyze
+        try:
+            self.plotObjList = list(self.setup["Plot"].keys())
+        except:
+            self.plotObjList = list(self.setup["Objects"].keys())
+        else:
+            if len(self.plotObjList) == 0:
+                self.plotObjList = list(self.setup["Objects"].keys())
+
+        # 2. Try to determine the type of plot otherwise set default
+        try:
+            self.plot_type = self.setup["Plot"]["type"]
+        except:
+            self.plot_type = "single"
+
+
+        def alpha_cl(self):
+            """Plotting AOA-Cl"""
+
+
+        # plt.plot(clean_df["cd"], clean_df["cl"])
+        # plt.grid()
+        # plt.savefig("test.png")
             
 
     def Post(self):
@@ -513,9 +537,6 @@ class Analysis:
                 # console.print(clean_df)
                 # 4. Append DF objResDict
                 objResDict[obj] = clean_df
-                plt.plot(clean_df["cd"], clean_df["cl"])
-                plt.grid()
-                plt.savefig("test.png")
                 # console.print
 
 

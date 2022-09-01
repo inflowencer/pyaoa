@@ -6,4 +6,4 @@ sys.path.insert(1, f"{home}/airfoil_lab/project_db/projects/software/iikj/src")
 
 import pyaoa.aoa as aoa
 
-simulation = aoa.Analysis("setup.yaml")
+simulation = aoa.Analysis("setup.yml")
