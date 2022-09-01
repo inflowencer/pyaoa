@@ -1,13 +1,5 @@
 [build-system]
-requires = [
-    "setuptools>=45",
-    "setuptools_scm[toml]>=6.2",
-    "pandas>=1.2",
-    "numpy>=1.15",
-    "rich>=11.0",
-    "pyyaml>=5.3",
-    "matplotlib>=3.3"
-]
+# These are the assumed default build requirements from pip:
+# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
+requires = ["setuptools>=43.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
