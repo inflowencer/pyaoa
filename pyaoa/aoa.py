@@ -529,3 +529,72 @@ class Analysis:
 #     quantity = Prompt.ask("[bright_white]Couldn't determine which quantity should be analyzed.\n[green]Please enter the quantity name")
 #     df = fluentToDataFrame(self, f, quantity)
 #     files.remove(_)
+
+# def multiAirfoilPlot(airfoils, plotType='polar-and-lilienthal', plotLimits={}, plotFilename='plots/multiAirfoilComparison.pdf'):
+#     '''Generate plots from airfoil data'''
+#     '''Generates and exports LaTeX figures from the airfoil data.
+
+#     Parameters
+#     ----------
+#     plotType : \'polar-and-lilienthal\', \'polar\', \'lilienthal\'
+#     exportPlot : True
+#     expDataAvailable : True
+#     plotLimits : dict(xmin_aoa=float, xmax_aoa=float, xmin_cd=float, xmax_cd=float, ymin_cl=float, ymax_cl=float)
+#     '''
+#     # Initialize plot
+#     fig, axs = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
+
+#     # Check if plotlimits are defined and if yes which ones
+#     if plotLimits:
+#         activeLimits = dict.fromkeys( ['xmin_aoa', 'xmax_aoa', 'xmin_cd', 'xmax_cd', 'ymin_cl', 'ymax_cl'] )
+#         for key, value in activeLimits.items():
+#             if key in plotLimits:
+#                 activeLimits[key] = plotLimits[key]
+#         # Set aoa xlimits if defined
+#         if activeLimits['xmin_aoa'] and activeLimits['xmax_aoa']:
+#             axs[0].set_xlim(activeLimits['xmin_aoa'], activeLimits['xmax_aoa'])
+#         # Set cd ylimits if defined
+#         if activeLimits['ymin_cl'] and activeLimits['ymax_cl']:
+#             axs[0].set_ylim(activeLimits['ymin_cl'], activeLimits['ymax_cl'])
+#         axs[0].set_ylabel(r'Lift coefficient $c_l$')
+#         # Set cd xlimits if defined
+#         if activeLimits['xmin_cd'] and activeLimits['xmax_cd']:
+#             axs[1].set_xlim(activeLimits['xmin_cd'], activeLimits['xmax_cd'])
+
+#     # aoa-Lift polar
+#     axs[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+#     axs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+#     axs[0].set_xlabel(r'Angle of attack $\alpha$')
+#     axs[0].set_ylabel(r'Lift coeffient $c_l$')
+#     axs[0].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+
+#     # cd-cl (Lilienthal)
+#     axs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+#     axs[1].set_xlabel(r'Drag coefficient $c_d$')
+#     axs[1].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+
+#     # leg.get_lines()[0].set_linewidth(0.2)
+
+#     for airfoil in airfoils:
+#         # If not data has been read in already
+#         # if airfoil.df_sim.empty():
+#         #     airfoil.df_sim = pd.read_csv(f'airfoil-data/{airfoil.airfoilName}_sim.csv', sep=',')
+
+#         if airfoil.expData:
+#             airfoil.df_exp = pd.read_csv("airfoil-data/" + airfoil.airfoilName + "_exp.csv", sep=',')
+
+#         if plotType == 'polar-and-lilienthal':
+#             # Polar
+#             axs[0].plot(airfoil.df_sim['alpha'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
+#             if airfoil.expData:
+#                 axs[0].scatter(airfoil.df_exp['alpha'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')   # Experimental data
+
+#             # Lilienthal
+#             axs[1].plot(airfoil.df_sim['cd'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
+#             if airfoil.expData:
+#                 axs[1].scatter(airfoil.df_exp['cd'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')  # Experimental data
+
+
+#     # leg = axs[1].legend(facecolor='white', frameon=True, framealpha=1)
+#     leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+#     fig.savefig(plotFilename, dpi=300)
