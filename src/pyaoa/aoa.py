@@ -512,34 +512,24 @@ class Analysis:
 
         leg = plt.legend()
     
-            
-
-
 
 #     # leg.get_lines()[0].set_linewidth(0.2)
-
 #     for airfoil in airfoils:
 #         # If not data has been read in already
 #         # if airfoil.df_sim.empty():
 #         #     airfoil.df_sim = pd.read_csv(f'airfoil-data/{airfoil.airfoilName}_sim.csv', sep=',')
-
 #         if airfoil.expData:
 #             airfoil.df_exp = pd.read_csv("airfoil-data/" + airfoil.airfoilName + "_exp.csv", sep=',')
-
 #         if plotType == 'polar-and-lilienthal':
 #             # Polar
 #             if airfoil.expData:
-
 #             # Lilienthal
 #             axs[1].plot(airfoil.df_sim['cd'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
 #             if airfoil.expData:
 #                 axs[1].scatter(airfoil.df_exp['cd'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')  # Experimental data
-
-
 #     # leg = axs[1].legend(facecolor='white', frameon=True, framealpha=1)
 #     leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
 #     fig.savefig(plotFilename, dpi=300)
-
         # plt.plot(clean_df["cd"], clean_df["cl"])
         # plt.grid()
         # plt.savefig("test.png")
@@ -625,8 +615,6 @@ class Analysis:
                 # 4. Append DF objResDict
                 # objResDict[obj] = clean_df
                 # console.print
-        
-
 
 
 # SCRATCH
