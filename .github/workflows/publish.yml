@@ -1,4 +1,9 @@
-name: Publish to PyPI.org
+name: Publish ${package_name} to PyPI / GitHub
+
+on:
+  push:
+    tags:
+      - "v*"
 
 # Testing out new workflow
 jobs:
