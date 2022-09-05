@@ -281,7 +281,7 @@ class Analysis:
 ;              Analysing object `{objName}`
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ; Opening transcript...
-/file/start-transcript run/{objName}.out"""
+/file/start-transcript run/{objName}.out o ()"""
 
                 # 1.3 Read in the mesh of that object
                 mesh = self.setup["Objects"][objName]["mesh"]
@@ -373,6 +373,29 @@ class Analysis:
         if self.run_script:
             self.createRunScript()
 
+
+    def clearResults(self):
+        previousResults = False
+        for obj in self.objects.keys():
+            # First check if the path already exists and if yes check if its empty
+            objResFolder = f"{self.post_folder}{obj}"
+            if os.path.exists(objResFolder):
+                contents = os.listdir(objResFolder)
+                if len(contents) > 0:
+                    self.clearRes = Prompt.ask("[bright_white]Previous results have been found, would you like to clear them?", choices=["y", "n"], default="n")
+                    if self.clearRes == "y":
+                        for item in contents:
+                            try:
+                                check_aoa = re.findall('-?\d+\.?\d*', item)[0]
+                            except:
+                                check_aoa = False
+                            if "alpha" in item and check_aoa and not ".csv" in item and not ".pdf" in item:
+                                os.remove(os.path.join(objResFolder, item))
+                        try:
+                            os.remove(f"{self.run_folder}{obj}.out")
+                        except:
+                            pass
+
         
     def clearFluentFiles(self):
         """Clears all Fluent files that have been written"""
@@ -390,29 +413,6 @@ class Analysis:
                 pass
         
 
-    def clearResults(self):
-        previousResults = False
-        for obj in self.objects.keys():
-            # First check if the path already exists and if yes check if its empty
-            objResFolder = f"{self.post_folder}{obj}"
-            if os.path.exists(objResFolder):
-                contents = os.listdir(objResFolder)
-                if contents:
-                    previousResults = True
-                    break
-        # If results have been found, clear them 
-        if contents:
-            self.clearRes = Prompt.ask("[bright_white]Previous results have been found, would you like to clear them?", choices=["y", "n"], default="y")
-            if self.clearRes:
-                for obj in self.objects.keys():
-                    try:
-                        os.rmdir(f"post/{obj}")
-                    except:
-                        pass
-                    try:
-                        os.remove(f"run/{obj}.hist")
-                    except:
-                        pass
         
 
     def createRunScript(self):
@@ -437,14 +437,23 @@ class Analysis:
     def Plot(self):
         """Method to plot depending on the setup.yaml"""
         console = Console()
+
+        if self.mode == 0:
+            self.plot = Prompt.ask("[yellow]Current mode was set as `pre`.[bright_white]Would you still like to plot?", choices=["y", "n"], default="y")
+            if self.clearRes:
+                pass
+            else:
+                sys.exit()
+
         # 1. Try to read the objects which shall be plotted otherwise use the objects to analyze
-        try:
-            self.plotObjList = list(self.setup["Plot"].keys())
-        except:
-            self.plotObjList = list(self.setup["Objects"].keys())
-        else:
-            if len(self.plotObjList) == 0:
-                self.plotObjList = list(self.setup["Objects"].keys())
+        self.plotObjList = list()
+        for obj in self.setup["Objects"].keys():
+            try:
+                self.setup["Objects"][obj]["plot"]
+            except:
+                pass
+            else:
+                self.plotObjList.append(obj)
 
         # 2. Try to determine the type of plot otherwise set default
         try:
@@ -470,7 +479,8 @@ class Analysis:
 
 
         # 8. Initialize the plot based on the settings
-        fig, axs = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
+        fig, axs = plt.subplots(1, 2, figsize=(7, 3), sharey=True)
+        plt.subplots_adjust(wspace=0.1)
         # if self.plot_type.lower() == "both":
         #     if self.plot_layout.lower() == "side-to-side":
         #     else:
@@ -480,7 +490,7 @@ class Analysis:
         for obj in self.plotObjList:
             # 10.1 Determine if there's reference data available
             try:
-                ref_data = self.setup["Plot"][obj]["ref-data"]
+                ref_data = self.setup["Objects"][obj]["ref-data"]
             except:
                 ref_data = False
             else:
@@ -500,7 +510,7 @@ class Analysis:
             axs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
             axs[0].set_xlabel(r'Angle of attack $\alpha$')
             axs[0].set_ylabel(r'Lift coeffient $c_l$')
-            axs[0].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+            axs[0].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
             axs[0].plot(df['alpha'], df['cl'], label=f"{obj}")
             if ref_data:
                 axs[0].scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"{obj} ref.")
@@ -508,9 +518,13 @@ class Analysis:
             # Cl/Cd (Lilienthal) Layout
             axs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
             axs[1].set_xlabel(r'Drag coefficient $c_d$')
-            axs[1].grid(True, which='both', axis='both', linewidth=0.1, color='grey')
+            axs[1].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+            axs[1].plot(df['cd'], df['cl'], label=f"{obj}")
+            axs[1].scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"{obj} ref.")
 
-        leg = plt.legend()
+        leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+        plt.savefig(f"{self.post_folder}{obj}/{obj}.pdf")
+
     
 
 #     # leg.get_lines()[0].set_linewidth(0.2)
@@ -575,16 +589,21 @@ class Analysis:
                 # 1. Get all AOAs
                 AOA_list = []
                 for f in files:
-                    num_list = re.findall('-?\d+\.?\d*', f)
-                    aoa = num_list[0]
-                    if not float(aoa) in AOA_list:
-                        AOA_list.append(float(aoa))
+                    if ".out" in f:
+                        num_list = re.findall('-?\d+\.?\d*', f)
+                        aoa = num_list[0]
+                        if not float(aoa) in AOA_list:
+                            AOA_list.append(float(aoa))
                 AOA_list = sorted(AOA_list)
 
                 # 2. Loop over each angle and append to AOA_dict of this object
                 for angle in AOA_list:
                     for f in files:
-                        if str(angle) in f:
+                        try:
+                            check_aoa = re.findall('-?\d+\.?\d*', f)[0]
+                        except:
+                            check_aoa = 1e10
+                        if str(angle) in f and str(angle) == str(check_aoa) and "alpha" in f:
                             if not angle in AOA_dict.keys():
                                 AOA_dict[angle] = {"drag": {"df": 0, "avg": 0}, "lift": {"df": 0, "avg": 0}}
                             if "drag" in f.lower():

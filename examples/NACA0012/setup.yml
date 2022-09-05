@@ -64,13 +64,39 @@ Objects:
 #                           PLOTTING                         #
 # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
 Plot:
-  NACA0012:
-    ref-data: post/NACA0012/ref/NACA0012_Re_8e5.csv
+  type: both
+  layout: side-to-side # [single, side-to-side]
+  # Settings for the lift coefficient plotting
+  lift:
+    x-title: Angle of attack $\alpha$
+    x-ticks: # Set width in absolute units
+      major: 1
+      minor: 1
+    y-ticks: # Set width in absolute units
+      major: 0.2
+      minor: 0.1
+    # xlims: [-0.1, 1.5]
+    y-lims: [-0.1, 1.5]
+    y-title: Lift coefficient $c_l$
+  # Settings for the Lilienthal plotting
+  lilienthal: 
+    x-ticks: # Set width in absolute units
+      major: 0.04
+      minor: 0.01
+    x-lims: [0, 0.2]
+    x-title: Drag coefficient $c_d$
+
+  export: pdf # [pdf, png, html]
+  grid:
+    enable: yes
+    which: major # ["major", "minor", "both"]
+  
+
+
+  # title: TEG2618 Base Airfoil Comparison
 
   # types: # [both, lilienthal, lift, drag]
-  # layout: side-to-side # [single, side-to-side]
   # sharey: yes
-  # export: png # [pdf, png, html]
   # cd:
   #   xlims: [0, 0.1] 
   #   # ylims: [0, 0.1] # Not needed when type "both"
