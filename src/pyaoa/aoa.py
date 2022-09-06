@@ -21,6 +21,11 @@ from rich.layout import Layout
 # Matplotlib related
 import matplotlib.pyplot as plt
 plt.style.use('science')
+# import importlib.resources # For importing matplotlib settings
+
+# with importlib.resources.open_text("pyaoa", "matplotlib.yml") as f:
+#     data = yaml.safe_load(f)  
+
 
 class Analysis:
     """Angle-of-Attack Analysis class for Pre- and Postprocessing"""
@@ -281,7 +286,7 @@ class Analysis:
 ;              Analysing object `{objName}`
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ; Opening transcript...
-/file/start-transcript run/{objName}.out o ()"""
+/file/start-transcript run/{objName}.hist o ()"""
 
                 # 1.3 Read in the mesh of that object
                 mesh = self.setup["Objects"][objName]["mesh"]
@@ -334,8 +339,6 @@ class Analysis:
             console.print("[bold red]Error: [not bold bright_white]Wrong solver specified in \"Numerics -> Solver\".\nAllowed solvers: [fluent, openfoam, su2]")
 
         return inputStr
-
-
 
 
     def Pre(self):
@@ -413,8 +416,6 @@ class Analysis:
                 pass
         
 
-        
-
     def createRunScript(self):
         """Creates a Run script to automatically run the simulation depending on the platform"""
         console = Console()
@@ -433,122 +434,6 @@ class Analysis:
                 f.write(runScript)
             console.print(f"Run script written to:       \'{self.script_path}\'")
 
-
-    def Plot(self):
-        """Method to plot depending on the setup.yaml"""
-        console = Console()
-
-        if self.mode == 0:
-            self.plot = Prompt.ask("[yellow]Current mode was set as `pre`.[bright_white]Would you still like to plot?", choices=["y", "n"], default="y")
-            if self.clearRes:
-                pass
-            else:
-                sys.exit()
-
-        # 1. Try to read the objects which shall be plotted otherwise use the objects to analyze
-        self.plotObjList = list()
-        for obj in self.setup["Objects"].keys():
-            try:
-                self.setup["Objects"][obj]["plot"]
-            except:
-                pass
-            else:
-                self.plotObjList.append(obj)
-
-        # 2. Try to determine the type of plot otherwise set default
-        try:
-            self.plot_type = self.setup["Plot"]["type"]
-        except:
-            self.plot_type = "both"
-
-        # 3. Determine the layout
-        try:
-            self.plot_layout = self.setup["Plot"]["layout"]
-        except:
-            self.plot_layout = "side-to-side"
-
-        # 4. Determine the export file type
-        try:
-            self.plot_ftype = self.setup["Plot"]["export"]
-        except:
-            self.plot_ftype = "png"
-
-        # 5. Functions for plotting
-        def alpha_cl(self):
-            """Plotting AOA-Cl"""
-
-
-        # 8. Initialize the plot based on the settings
-        fig, axs = plt.subplots(1, 2, figsize=(7, 3), sharey=True)
-        plt.subplots_adjust(wspace=0.1)
-        # if self.plot_type.lower() == "both":
-        #     if self.plot_layout.lower() == "side-to-side":
-        #     else:
-
-
-        # 10. Loop over all objects
-        for obj in self.plotObjList:
-            # 10.1 Determine if there's reference data available
-            try:
-                ref_data = self.setup["Objects"][obj]["ref-data"]
-            except:
-                ref_data = False
-            else:
-                df_ref = pd.read_csv(ref_data, sep=",")
-            objResFolder = f"{self.post_folder}{obj}"
-            if not objResFolder[-1] == "/":
-                objResFolder += "/"
-            if not os.path.exists(objResFolder):
-                console.print(f"[bold red]Error:[not bold bright_white] Result folder for {obj} not found...")
-                sys.exit()
-
-            # Read in CSV
-            df = pd.read_csv(f"{objResFolder}{obj}.csv", sep=",")
-
-            # Cl/AOA polar Layout
-            axs[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
-            axs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
-            axs[0].set_xlabel(r'Angle of attack $\alpha$')
-            axs[0].set_ylabel(r'Lift coeffient $c_l$')
-            axs[0].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
-            axs[0].plot(df['alpha'], df['cl'], label=f"{obj}")
-            if ref_data:
-                axs[0].scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"{obj} ref.")
-
-            # Cl/Cd (Lilienthal) Layout
-            axs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
-            axs[1].set_xlabel(r'Drag coefficient $c_d$')
-            axs[1].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
-            axs[1].plot(df['cd'], df['cl'], label=f"{obj}")
-            axs[1].scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"{obj} ref.")
-
-        leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
-        plt.savefig(f"{self.post_folder}{obj}/{obj}.pdf")
-
-    
-
-#     # leg.get_lines()[0].set_linewidth(0.2)
-#     for airfoil in airfoils:
-#         # If not data has been read in already
-#         # if airfoil.df_sim.empty():
-#         #     airfoil.df_sim = pd.read_csv(f'airfoil-data/{airfoil.airfoilName}_sim.csv', sep=',')
-#         if airfoil.expData:
-#             airfoil.df_exp = pd.read_csv("airfoil-data/" + airfoil.airfoilName + "_exp.csv", sep=',')
-#         if plotType == 'polar-and-lilienthal':
-#             # Polar
-#             if airfoil.expData:
-#             # Lilienthal
-#             axs[1].plot(airfoil.df_sim['cd'], airfoil.df_sim['cl'], label='{}'.format(airfoil.airfoilName)) # Simulation data
-#             if airfoil.expData:
-#                 axs[1].scatter(airfoil.df_exp['cd'], airfoil.df_exp['cl'], color='red', marker='+', label=f'{airfoil.airfoilName} Experiment')  # Experimental data
-#     # leg = axs[1].legend(facecolor='white', frameon=True, framealpha=1)
-#     leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
-#     fig.savefig(plotFilename, dpi=300)
-        # plt.plot(clean_df["cd"], clean_df["cl"])
-        # plt.grid()
-        # plt.savefig("test.png")
-    
-            
 
     def Post(self):
         """Post-processing method"""
@@ -636,25 +521,154 @@ class Analysis:
                 # console.print
 
 
-# SCRATCH
-        # self, airfoilName, ambientConditions, L, yplus=0.2, aoaMin=-5.0, aoaMax=10.0, numberOfIncrements=10, inputFilename='',
-        # transcriptFilename='', resultFilename='', expData=False, plotFilename='', meshFilename='', experimentalDataFilename=''
+    def Plot(self):
+        """Method to plot depending on the setup.yaml"""
+        console = Console()
 
-# else:
-#     quantity = Prompt.ask("[bright_white]Couldn't determine which quantity should be analyzed.\n[green]Please enter the quantity name")
-#     df = fluentToDataFrame(self, f, quantity)
-#     files.remove(_)
+        if self.mode == 0:
+            self.plot = Prompt.ask("[yellow]Current mode was set as `pre`.[bright_white]Would you still like to plot?", choices=["y", "n"], default="y")
+            if self.clearRes == "y":
+                pass
+            else:
+                sys.exit()
 
-# def multiAirfoilPlot(airfoils, plotType='polar-and-lilienthal', plotLimits={}, plotFilename='plots/multiAirfoilComparison.pdf'):
-#     '''Generate plots from airfoil data'''
-#     '''Generates and exports LaTeX figures from the airfoil data.
+        # 1. Try to read the objects which shall be plotted otherwise use the objects to analyze
+        self.plotObjList = list()
+        for obj in self.setup["Objects"].keys():
+            try:
+                enable_plot = self.setup["Objects"][obj]["plot"]["enable"]
+            except:
+                pass
+            else:
+                if enable_plot:
+                    self.plotObjList.append(obj)
+        
+        # 2. Read the general Plot settings
+        try:
+            self.plot_file_type = self.setup["Plot"]["export"]
+        except:
+            self.plot_file_type = "pdf"
+        try:
+            self.plot_grid = self.setup["Plot"]["grid"]["enable"]
+        except:
+            self.plot_grid = False
+        try:
+            self.legend = self.setup["Plot"]["legend"]
+        except:
+            self.legend = False
+        
 
-#     Parameters
-#     ----------
-#     plotType : \'polar-and-lilienthal\', \'polar\', \'lilienthal\'
-#     exportPlot : True
-#     expDataAvailable : True
-#     plotLimits : dict(xmin_aoa=float, xmax_aoa=float, xmin_cd=float, xmax_cd=float, ymin_cl=float, ymax_cl=float)
-#     '''
-#     # Initialize plot
-#     fig, axs = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        #                          D R A G                           #
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        # 3. Read the drag plot settings
+        try:
+            self.plot_drag_x_label = self.setup["Plot"]["drag"]["x-label"]
+        except:
+            self.plot_drag_x_label = r"Angle of attack $\alpha$"
+        try:
+            self.plot_drag_y_label = self.setup["Plot"]["drag"]["y-label"]
+        except:
+            self.plot_drag_y_label = r"Drag coefficient $c_d$"
+        try:
+            self.plot_drag_xlims = self.setup["Plot"]["drag"]["x-lims"]
+        except:
+            self.plot_drag_xlims = False
+        try:
+            self.plot_drag_ylims = self.setup["Plot"]["drag"]["y-lims"]
+        except:
+            self.plot_drag_ylims = False
+        try:
+            self.plot_drag_x_tick_major = self.setup["Plot"]["drag"]["x-ticks"]["major"]
+        except:
+            self.plot_drag_x_tick_major = False
+        try:
+            self.plot_drag_x_tick_minor = self.setup["Plot"]["drag"]["x-ticks"]["minor"]
+        except:
+            self.plot_drag_x_tick_minor = False
+        try:
+            self.plot_drag_y_tick_major = self.setup["Plot"]["drag"]["y-ticks"]["major"]
+        except:
+            self.plot_drag_y_tick_major = False
+        try:
+            self.plot_drag_y_tick_minor = self.setup["Plot"]["drag"]["y-ticks"]["minor"]
+        except:
+            self.plot_drag_y_tick_minor = False
+        # 3.1 Initialize Drag plot
+        fig_cd, axs_cd = plt.subplots(1, 1, figsize=(3, 3))
+        axs_cd.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+        axs_cd.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+        axs_cd.set_xlabel(self.plot_drag_x_label)
+        axs_cd.set_ylabel(self.plot_drag_y_label)
+        if self.plot_grid:
+            axs_cd.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+        if self.plot_drag_xlims:
+            axs_cd.set_xlim(self.plot_drag_xlims[0], self.plot_drag_xlims[1])
+        if self.plot_drag_ylims:
+            axs_cd.set_ylim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+
+        # 3.2 Initialize Lift plot
+        # 3.3 Initialize Lilienthal plot
+        # 3.4 Initialize side-by-side plot
+        # 4. Loop over all Objects and generate drag, lift, LL and side-by-side plot
+        for obj in self.plotObjList:
+            try:
+                ref_data = self.setup["Objects"][obj]["ref-data"]
+            except:
+                ref_data = False
+            else:
+                df_ref = pd.read_csv(ref_data, sep=",")
+            try:
+                legend_name = self.setup["Objects"][obj]["plot"]["legend-name"]
+            except:
+                legend_name = obj
+
+            objResFolder = f"{self.post_folder}{obj}"
+            if not objResFolder[-1] == "/":
+                objResFolder += "/"
+            if not os.path.exists(objResFolder):
+                console.print(f"[bold red]Error:[not bold bright_white] Result folder for {obj} not found...")
+                sys.exit()
+
+            # Read in CSV
+            df = pd.read_csv(f"{objResFolder}{obj}.csv", sep=",")
+            if self.legend:
+                axs_cd.plot(df['alpha'], df['cd'], label=f"{legend_name}")
+                # axs_cl.plot(df['alpha'], df['cl'], label=f"{legend_name}")
+                # axs_ll.plot(df['cd'], df['cl'], label=f"{legend_name}")
+                # axs_sbs[0].plot(df['alpha'], df['cl'], label=f"{legend_name}")
+                # axs_sbs[1].plot(df['cd'], df['cl'], label=f"{legend_name}")
+            else:
+                axs_cd.plot(df['alpha'], df['cd'])
+                # axs_cl.plot(df['alpha'], df['cl'])
+                # axs_ll.plot(df['cd'], df['cl'])
+                # axs_sbs[0].plot(df['alpha'], df['cl'])
+                # axs_sbs[1].plot(df['cd'], df['cl'])
+            if ref_data:
+                if self.legend:
+                    axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+', label=f"Ref")
+                    # axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"Ref")
+                    # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"Ref")
+                    # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'], label=f"{obj} ref")
+                    # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'], label=f"{obj} ref")
+                else:
+                    axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+')
+                    # axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+')
+                    # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+')
+                    # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'])
+                    # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'])
+
+            if self.legend:
+                axs_cd.legend()
+                # axs_cl.legend()
+                # axs_ll.legend()
+                # leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+            # fig_cl.savefig(f"{self.post_folder}{obj}/{obj}_cl.pdf")
+            fig_cd.savefig(f"{self.post_folder}{obj}/{obj}_cd.pdf")
+            # fig_ll.savefig(f"{self.post_folder}{obj}/{obj}_ll.pdf")
+            # axs_cl.cla() 
+            axs_cd.cla() 
+
+        # Save fig of all objects
+        # leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+        # fig_ll.savefig(f"{self.post_folder}all_objects.{self.plot_file_type}")
