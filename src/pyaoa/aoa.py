@@ -721,9 +721,127 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
             elif mode == "global":
                 return fig_cl_global, axs_cl_global
 
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        #                    L I L I E N T H A L                     #
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        def LLPlotLayout(mode):
+            # Obj
+            fig_ll, axs_ll = plt.subplots(1, 1, figsize=(3, 3))
+            axs_ll.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_ll.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_ll.set_xlabel(self.plot_drag_y_label)
+            axs_ll.set_ylabel(self.plot_lift_y_label)
+            # Global
+            fig_ll_global, axs_ll_global = plt.subplots(1, 1, figsize=(3, 3))
+            axs_ll_global.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_ll_global.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_ll_global.set_xlabel(self.plot_drag_y_label)
+            axs_ll_global.set_ylabel(self.plot_lift_y_label)
+            if self.plot_grid:
+                axs_ll.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_ll_global.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+            if self.plot_lift_xlims:
+                axs_ll.set_xlim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+                axs_ll_global.set_xlim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+            if self.plot_lift_ylims:
+                axs_ll.set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+                axs_ll_global.set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+            if self.plot_lift_x_tick_major:
+                axs_ll.xaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                axs_ll_global.xaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_lift_x_tick_minor:
+                axs_ll.xaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+                axs_ll_global.xaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+            if self.plot_lift_y_tick_major:
+                axs_ll.yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                axs_ll_global.yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_lift_y_tick_minor:
+                axs_ll.yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+                axs_ll_global.yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+
+            if mode == "local":
+                return fig_ll, axs_ll
+            elif mode == "global":
+                return fig_ll_global, axs_ll_global
+
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        #          L I F T   -   S I D E - b y - S I D E              #
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        def sbsPlotLayout(mode):
+            # Obj
+            fig_sbs, axs_sbs = plt.subplots(1, 2, figsize=(7, 3))
+            fig_sbs.subplots_adjust(wspace=0.05)
+            # Left plot (lift)
+            axs_sbs[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs[0].set_xlabel(self.plot_lift_x_label)
+            axs_sbs[0].set_ylabel(self.plot_lift_y_label)
+            # Right plot (Lilienthal)
+            axs_sbs[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs[1].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs[1].set_xlabel(self.plot_drag_y_label)
+            axs_sbs[1].yaxis.set_ticklabels([])
+
+            # Global
+            # Left plot (lift)
+            fig_sbs_global, axs_sbs_global = plt.subplots(1, 2, figsize=(7, 3), sharey=True)
+            fig_sbs_global.subplots_adjust(wspace=0.05)
+            axs_sbs_global[0].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs_global[0].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs_global[0].set_xlabel(self.plot_lift_x_label)
+            axs_sbs_global[0].set_ylabel(self.plot_lift_y_label)
+            # Lilienthal
+            axs_sbs_global[1].axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs_global[1].axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_sbs_global[1].set_xlabel(self.plot_drag_y_label)
+            axs_sbs_global[1].yaxis.set_ticklabels([])
+            if self.plot_grid:
+                axs_sbs[0].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_sbs[1].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_sbs_global[0].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_sbs_global[1].grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+            if self.plot_lift_xlims:
+                axs_sbs[0].set_xlim(self.plot_lift_xlims[0], self.plot_lift_xlims[1])
+                axs_sbs[1].set_xlim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+                axs_sbs_global[0].set_xlim(self.plot_lift_xlims[0], self.plot_lift_xlims[1])
+                axs_sbs_global[1].set_xlim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+            if self.plot_lift_ylims:
+                axs_sbs[0].set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+                axs_sbs_global[0].set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+            if self.plot_lift_x_tick_major:
+                axs_sbs[0].xaxis.set_major_locator(MultipleLocator(self.plot_lift_x_tick_major))
+                axs_sbs[1].xaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                axs_sbs_global[0].xaxis.set_major_locator(MultipleLocator(self.plot_lift_x_tick_major))
+                axs_sbs_global[1].xaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_lift_x_tick_minor:
+                axs_sbs[0].xaxis.set_minor_locator(MultipleLocator(self.plot_lift_x_tick_minor))
+                axs_sbs[1].xaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+                axs_sbs_global[0].xaxis.set_minor_locator(MultipleLocator(self.plot_lift_x_tick_minor))
+                axs_sbs_global[1].xaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+            if self.plot_lift_y_tick_major:
+                axs_sbs[0].yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                axs_sbs[1].yaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                axs_sbs_global[0].yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                axs_sbs_global[1].yaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+            if self.plot_lift_y_tick_minor:
+                axs_sbs[0].yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+                axs_sbs[1].yaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+                axs_sbs_global[0].yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+                axs_sbs_global[1].yaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+
+            if mode == "local":
+                return fig_sbs, axs_sbs
+            elif mode == "global":
+                return fig_sbs_global, axs_sbs_global
+
         # Initialize global figure
         fig_cd_global, axs_cd_global = liftPlotLayout("global")
         fig_cl_global, axs_cl_global = liftPlotLayout("global")
+        fig_ll_global, axs_ll_global = LLPlotLayout("global")
+        fig_sbs_global, axs_sbs_global = sbsPlotLayout("global")
 
 
         # 3.3 Initialize Lilienthal plot
@@ -756,53 +874,64 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
             # Read in CSV
             df = pd.read_csv(f"{objResFolder}{obj}.csv", sep=",")
 
-            # Initiliaze figure
+            # Initiliaze Obj figures
             fig_cd, axs_cd = liftPlotLayout("local")
             fig_cl, axs_cl = liftPlotLayout("local")
+            fig_ll, axs_ll = LLPlotLayout("local")
+            fig_sbs, axs_sbs = sbsPlotLayout("local")
             # Local plot
             if self.legend:
                 axs_cd.plot(df['alpha'], df['cd'], linewidth=line_width, label=f"{legend_name}")
                 axs_cl.plot(df['alpha'], df['cl'], linewidth=line_width, label=f"{legend_name}")
-                # axs_ll.plot(df['cd'], df['cl'], label=f"{legend_name}")
-                # axs_sbs[0].plot(df['alpha'], df['cl'], label=f"{legend_name}")
-                # axs_sbs[1].plot(df['cd'], df['cl'], label=f"{legend_name}")
+                axs_ll.plot(df['cd'], df['cl'], linewidth=line_width, label=f"{legend_name}")
+                axs_sbs[0].plot(df['alpha'], df['cl'], linewidth=line_width)
+                axs_sbs[1].plot(df['cd'], df['cl'], linewidth=line_width, label=f"{legend_name}")
             else:
                 axs_cd.plot(df['alpha'], df['cd'], linewidth=line_width)
                 axs_cl.plot(df['alpha'], df['cl'], linewidth=line_width)
-                # axs_ll.plot(df['cd'], df['cl'])
-                # axs_sbs[0].plot(df['alpha'], df['cl'])
-                # axs_sbs[1].plot(df['cd'], df['cl'])
+                axs_ll.plot(df['cd'], df['cl'], linewidth=line_width)
+                axs_sbs[0].plot(df['alpha'], df['cl'], linewidth=line_width)
+                axs_sbs[1].plot(df['cd'], df['cl'], linewidth=line_width)
             # Global plot
             axs_cd_global.plot(df['alpha'], df['cd'], linewidth=line_width, label=f"{legend_name}")
             axs_cl_global.plot(df['alpha'], df['cl'], linewidth=line_width, label=f"{legend_name}")
+            axs_ll_global.plot(df['cd'], df['cl'], linewidth=line_width, label=f"{legend_name}")
+            axs_sbs_global[0].plot(df['alpha'], df['cl'], linewidth=line_width)
+            axs_sbs_global[1].plot(df['cd'], df['cl'], linewidth=line_width, label=f"{legend_name}")
             if ref_data:
                 if self.legend:
                     axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+', label=f"{legend_name} Ref.")
                     axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"{legend_name} Ref.")
-                    # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"Ref")
-                    # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'], label=f"{obj} ref")
-                    # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'], label=f"{obj} ref")
+                    axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"{legend_name} Ref.")
+                    axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'], label=f"{obj} ref")
+                    axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'], label=f"{obj} ref")
                 else:
                     axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+')
                     axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+')
-                    # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+')
-                    # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'])
-                    # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'])
+                    axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+')
+                    axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'])
+                    axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'])
                 # Global plot with legend
                 axs_cd_global.scatter(df_ref['alpha'], df_ref['cd'], marker='+', label=f"{legend_name} Ref.")
                 axs_cl_global.scatter(df_ref['alpha'], df_ref['cl'], marker='+', label=f"{legend_name} Ref.")
+                axs_ll_global.scatter(df_ref['cd'], df_ref['cl'], marker='+', label=f"{legend_name} Ref.")
+                axs_sbs_global[0].scatter(df_ref['alpha'], df_ref['cl'], marker='+', label=f"{legend_name} Ref.")
+                axs_sbs_global[1].scatter(df_ref['cd'], df_ref['cl'], marker='+')
 
             if self.legend:
                 axs_cd.legend()
                 axs_cl.legend()
-                # axs_ll.legend()
-                # leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
+                axs_ll.legend()
+                axs_sbs.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=4, prop={'size': 6})  # bbox_transform=fig.transFigure
             fig_cd.savefig(f"{self.post_folder}{obj}/{obj}_cd.pdf")
             fig_cl.savefig(f"{self.post_folder}{obj}/{obj}_cl.pdf")
-            # fig_ll.savefig(f"{self.post_folder}{obj}/{obj}_ll.pdf")
+            fig_ll.savefig(f"{self.post_folder}{obj}/{obj}_LL.pdf")
+            fig_sbs.savefig(f"{self.post_folder}{obj}/{obj}_SBS.pdf")
             # Clear figures for next Obj
             plt.close(fig_cd)
             plt.close(fig_cl)
+            plt.close(fig_ll)
+            plt.close(fig_sbs)
 
         # Enable legend for the global plots
         # Drag
@@ -814,6 +943,16 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
         cl_leg.get_frame().set_edgecolor('black')
         cl_leg.get_frame().set_linewidth(0.2)
         # Lilienthal
+        ll_leg = axs_ll_global.legend(ncol=2, bbox_to_anchor=(1.05, 1.00), prop={'size': 6}, frameon=True, fancybox=False, shadow=True) # loc="lower left", 
+        ll_leg.get_frame().set_edgecolor('black')
+        ll_leg.get_frame().set_linewidth(0.2)
+        # Side-by-Side
+        sbs_leg = axs_sbs_global[1].legend(ncol=8, bbox_to_anchor=(0.95, 1.2), prop={'size': 6}, frameon=True, fancybox=False, shadow=True) # loc="lower left", 
+        sbs_leg.get_frame().set_edgecolor('black')
+        sbs_leg.get_frame().set_linewidth(0.2)
+
         # Save global plots
-        fig_cd_global.savefig(f"{self.post_folder}all_objects_cd.pdf")
-        fig_cl_global.savefig(f"{self.post_folder}all_objects_cl.pdf")
+        fig_cd_global.savefig(f"{self.post_folder}cd.pdf")
+        fig_cl_global.savefig(f"{self.post_folder}cl.pdf")
+        fig_ll_global.savefig(f"{self.post_folder}LL.pdf")
+        fig_sbs_global.savefig(f"{self.post_folder}SBS.pdf")
