@@ -21,6 +21,9 @@ from rich.layout import Layout
 # Matplotlib related
 import matplotlib.pyplot as plt
 plt.style.use('science')
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+plt.rcParams.update({'figure.max_open_warning': 0})
+
 # import importlib.resources # For importing matplotlib settings
 
 # with importlib.resources.open_text("pyaoa", "matplotlib.yml") as f:
@@ -35,7 +38,8 @@ class Analysis:
 
         console = Console()
 
-        self.mode = Prompt.ask("\n[bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]\nSelect the mode  [bold cyan]0: Preprocessing    [bold yellow]1: Postprocessing\n", choices=["0", "1"], default="0")
+        self.mode = Prompt.ask("""\n[bright_white]Welcome to the Angle-of-Attack Analysis Tool![not bold bright_white]
+Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold green]2: Plot\n""", choices=["0", "1", "2"], default="0")
         # Read in yaml setup
         with open(setupFile, "r") as f:
             self.setup = yaml.safe_load(f)
@@ -89,7 +93,8 @@ class Analysis:
             self.Pre()
         elif int(self.mode) == 1:
             self.Post()
-    
+        elif int(self.mode) == 2:
+            self.Plot()
 
     def ambientConditions(self):
         """Method to calculate and create ambient_dict attribute for free-stream boundary conditions."""
@@ -594,20 +599,133 @@ class Analysis:
             self.plot_drag_y_tick_minor = self.setup["Plot"]["drag"]["y-ticks"]["minor"]
         except:
             self.plot_drag_y_tick_minor = False
-        # 3.1 Initialize Drag plot
-        fig_cd, axs_cd = plt.subplots(1, 1, figsize=(3, 3))
-        axs_cd.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
-        axs_cd.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
-        axs_cd.set_xlabel(self.plot_drag_x_label)
-        axs_cd.set_ylabel(self.plot_drag_y_label)
-        if self.plot_grid:
-            axs_cd.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
-        if self.plot_drag_xlims:
-            axs_cd.set_xlim(self.plot_drag_xlims[0], self.plot_drag_xlims[1])
-        if self.plot_drag_ylims:
-            axs_cd.set_ylim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+        # 3.1 Initialize Drag plot for each obj and a global one
+        # Obj
+        def dragPlotLayout(self, mode):
+            fig_cd, axs_cd = plt.subplots(1, 1, figsize=(3, 3))
+            axs_cd.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cd.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cd.set_xlabel(self.plot_drag_x_label)
+            axs_cd.set_ylabel(self.plot_drag_y_label)
+            # Global
+            fig_cd_global, axs_cd_global = plt.subplots(1, 1, figsize=(3, 3))
+            axs_cd_global.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cd_global.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cd_global.set_xlabel(self.plot_drag_x_label)
+            axs_cd_global.set_ylabel(self.plot_drag_y_label)
+            if self.plot_grid:
+                axs_cd.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_cd_global.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+            if self.plot_drag_xlims:
+                axs_cd.set_xlim(self.plot_drag_xlims[0], self.plot_drag_xlims[1])
+                axs_cd_global.set_xlim(self.plot_drag_xlims[0], self.plot_drag_xlims[1])
+            if self.plot_drag_ylims:
+                axs_cd.set_ylim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+                axs_cd_global.set_ylim(self.plot_drag_ylims[0], self.plot_drag_ylims[1])
+            if self.plot_drag_x_tick_major:
+                axs_cd.xaxis.set_major_locator(MultipleLocator(self.plot_drag_x_tick_major))
+                axs_cd_global.xaxis.set_major_locator(MultipleLocator(self.plot_drag_x_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_drag_x_tick_minor:
+                axs_cd.xaxis.set_minor_locator(MultipleLocator(self.plot_drag_x_tick_minor))
+                axs_cd_global.xaxis.set_minor_locator(MultipleLocator(self.plot_drag_x_tick_minor))
+            if self.plot_drag_y_tick_major:
+                axs_cd.yaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                axs_cd_global.yaxis.set_major_locator(MultipleLocator(self.plot_drag_y_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_drag_y_tick_minor:
+                axs_cd.yaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
+                axs_cd_global.yaxis.set_minor_locator(MultipleLocator(self.plot_drag_y_tick_minor))
 
-        # 3.2 Initialize Lift plot
+            if mode == "local":
+                return fig_cd, axs_cd
+            elif mode == "global":
+                return fig_cd_global, axs_cd_global
+
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        #                          L I F T                           #
+        # - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - #
+        # 3. Read the lift plot settings
+        try:
+            self.plot_lift_x_label = self.setup["Plot"]["lift"]["x-label"]
+        except:
+            self.plot_lift_x_label = r"Angle of attack $\alpha$"
+        try:
+            self.plot_lift_y_label = self.setup["Plot"]["lift"]["y-label"]
+        except:
+            self.plot_lift_y_label = r"lift coefficient $c_d$"
+        try:
+            self.plot_lift_xlims = self.setup["Plot"]["lift"]["x-lims"]
+        except:
+            self.plot_lift_xlims = False
+        try:
+            self.plot_lift_ylims = self.setup["Plot"]["lift"]["y-lims"]
+        except:
+            self.plot_lift_ylims = False
+        try:
+            self.plot_lift_x_tick_major = self.setup["Plot"]["lift"]["x-ticks"]["major"]
+        except:
+            self.plot_lift_x_tick_major = False
+        try:
+            self.plot_lift_x_tick_minor = self.setup["Plot"]["lift"]["x-ticks"]["minor"]
+        except:
+            self.plot_lift_x_tick_minor = False
+        try:
+            self.plot_lift_y_tick_major = self.setup["Plot"]["lift"]["y-ticks"]["major"]
+        except:
+            self.plot_lift_y_tick_major = False
+        try:
+            self.plot_lift_y_tick_minor = self.setup["Plot"]["lift"]["y-ticks"]["minor"]
+        except:
+            self.plot_lift_y_tick_minor = False
+        # 3.1 Initialize lift plot for each obj and a global one
+        def liftPlotLayout(mode):
+            # Obj
+            fig_cl, axs_cl = plt.subplots(1, 1, figsize=(3, 3))
+            axs_cl.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cl.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cl.set_xlabel(self.plot_lift_x_label)
+            axs_cl.set_ylabel(self.plot_lift_y_label)
+            # Global
+            fig_cl_global, axs_cl_global = plt.subplots(1, 1, figsize=(3, 3))
+            axs_cl_global.axhline(y=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cl_global.axvline(x=0, color='gray', linestyle='-', linewidth=0.5)
+            axs_cl_global.set_xlabel(self.plot_lift_x_label)
+            axs_cl_global.set_ylabel(self.plot_lift_y_label)
+            if self.plot_grid:
+                axs_cl.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+                axs_cl_global.grid(True, which='major', axis='both', linewidth=0.1, color='grey')
+            if self.plot_lift_xlims:
+                axs_cl.set_xlim(self.plot_lift_xlims[0], self.plot_lift_xlims[1])
+                axs_cl_global.set_xlim(self.plot_lift_xlims[0], self.plot_lift_xlims[1])
+            if self.plot_lift_ylims:
+                axs_cl.set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+                axs_cl_global.set_ylim(self.plot_lift_ylims[0], self.plot_lift_ylims[1])
+            if self.plot_lift_x_tick_major:
+                axs_cl.xaxis.set_major_locator(MultipleLocator(self.plot_lift_x_tick_major))
+                axs_cl_global.xaxis.set_major_locator(MultipleLocator(self.plot_lift_x_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_lift_x_tick_minor:
+                axs_cl.xaxis.set_minor_locator(MultipleLocator(self.plot_lift_x_tick_minor))
+                axs_cl_global.xaxis.set_minor_locator(MultipleLocator(self.plot_lift_x_tick_minor))
+            if self.plot_lift_y_tick_major:
+                axs_cl.yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                axs_cl_global.yaxis.set_major_locator(MultipleLocator(self.plot_lift_y_tick_major))
+                # ax.xaxis.set_major_formatter('{x:.0f}')
+            if self.plot_lift_y_tick_minor:
+                axs_cl.yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+                axs_cl_global.yaxis.set_minor_locator(MultipleLocator(self.plot_lift_y_tick_minor))
+
+            if mode == "local":
+                return fig_cl, axs_cl
+            elif mode == "global":
+                return fig_cl_global, axs_cl_global
+
+        # Initialize global figure
+        fig_cd_global, axs_cd_global = liftPlotLayout("global")
+        fig_cl_global, axs_cl_global = liftPlotLayout("global")
+
+
         # 3.3 Initialize Lilienthal plot
         # 3.4 Initialize side-by-side plot
         # 4. Loop over all Objects and generate drag, lift, LL and side-by-side plot
@@ -617,11 +735,16 @@ class Analysis:
             except:
                 ref_data = False
             else:
-                df_ref = pd.read_csv(ref_data, sep=",")
+                if ref_data:
+                    df_ref = pd.read_csv(ref_data, sep=",")
             try:
                 legend_name = self.setup["Objects"][obj]["plot"]["legend-name"]
             except:
                 legend_name = obj
+            try:
+                line_width = self.setup["Objects"][obj]["plot"]["line-width"]
+            except:
+                line_width = None
 
             objResFolder = f"{self.post_folder}{obj}"
             if not objResFolder[-1] == "/":
@@ -632,43 +755,65 @@ class Analysis:
 
             # Read in CSV
             df = pd.read_csv(f"{objResFolder}{obj}.csv", sep=",")
+
+            # Initiliaze figure
+            fig_cd, axs_cd = liftPlotLayout("local")
+            fig_cl, axs_cl = liftPlotLayout("local")
+            # Local plot
             if self.legend:
-                axs_cd.plot(df['alpha'], df['cd'], label=f"{legend_name}")
-                # axs_cl.plot(df['alpha'], df['cl'], label=f"{legend_name}")
+                axs_cd.plot(df['alpha'], df['cd'], linewidth=line_width, label=f"{legend_name}")
+                axs_cl.plot(df['alpha'], df['cl'], linewidth=line_width, label=f"{legend_name}")
                 # axs_ll.plot(df['cd'], df['cl'], label=f"{legend_name}")
                 # axs_sbs[0].plot(df['alpha'], df['cl'], label=f"{legend_name}")
                 # axs_sbs[1].plot(df['cd'], df['cl'], label=f"{legend_name}")
             else:
-                axs_cd.plot(df['alpha'], df['cd'])
-                # axs_cl.plot(df['alpha'], df['cl'])
+                axs_cd.plot(df['alpha'], df['cd'], linewidth=line_width)
+                axs_cl.plot(df['alpha'], df['cl'], linewidth=line_width)
                 # axs_ll.plot(df['cd'], df['cl'])
                 # axs_sbs[0].plot(df['alpha'], df['cl'])
                 # axs_sbs[1].plot(df['cd'], df['cl'])
+            # Global plot
+            axs_cd_global.plot(df['alpha'], df['cd'], linewidth=line_width, label=f"{legend_name}")
+            axs_cl_global.plot(df['alpha'], df['cl'], linewidth=line_width, label=f"{legend_name}")
             if ref_data:
                 if self.legend:
-                    axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+', label=f"Ref")
-                    # axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"Ref")
+                    axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+', label=f"{legend_name} Ref.")
+                    axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+', label=f"{legend_name} Ref.")
                     # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+', label=f"Ref")
                     # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'], label=f"{obj} ref")
                     # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'], label=f"{obj} ref")
                 else:
                     axs_cd.scatter(df_ref['alpha'], df_ref['cd'], color='red', marker='+')
-                    # axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+')
+                    axs_cl.scatter(df_ref['alpha'], df_ref['cl'], color='red', marker='+')
                     # axs_ll.scatter(df_ref['cd'], df_ref['cl'], color='red', marker='+')
                     # axs_sbs[0].scatter(df_ref['alpha'], df_ref['cl'])
                     # axs_sbs[1].scatter(df_ref['cd'], df_ref['cl'])
+                # Global plot with legend
+                axs_cd_global.scatter(df_ref['alpha'], df_ref['cd'], marker='+', label=f"{legend_name} Ref.")
+                axs_cl_global.scatter(df_ref['alpha'], df_ref['cl'], marker='+', label=f"{legend_name} Ref.")
 
             if self.legend:
                 axs_cd.legend()
-                # axs_cl.legend()
+                axs_cl.legend()
                 # axs_ll.legend()
                 # leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
-            # fig_cl.savefig(f"{self.post_folder}{obj}/{obj}_cl.pdf")
             fig_cd.savefig(f"{self.post_folder}{obj}/{obj}_cd.pdf")
+            fig_cl.savefig(f"{self.post_folder}{obj}/{obj}_cl.pdf")
             # fig_ll.savefig(f"{self.post_folder}{obj}/{obj}_ll.pdf")
-            # axs_cl.cla() 
-            axs_cd.cla() 
+            # Clear figures for next Obj
+            plt.close(fig_cd)
+            plt.close(fig_cl)
 
-        # Save fig of all objects
-        # leg = plt.legend(bbox_to_anchor=(-1, -0.3), loc="lower left", ncol=3, prop={'size': 8})  # bbox_transform=fig.transFigure
-        # fig_ll.savefig(f"{self.post_folder}all_objects.{self.plot_file_type}")
+        # Enable legend for the global plots
+        # Drag
+        cd_leg = axs_cd_global.legend(ncol=2, bbox_to_anchor=(1.05, 1.00), prop={'size': 6}, frameon=True, fancybox=False, shadow=True) # loc="lower left", 
+        cd_leg.get_frame().set_edgecolor('black')
+        cd_leg.get_frame().set_linewidth(0.2)
+        # Lift
+        cl_leg = axs_cl_global.legend(ncol=2, bbox_to_anchor=(1.05, 1.00), prop={'size': 6}, frameon=True, fancybox=False, shadow=True) # loc="lower left", 
+        cl_leg.get_frame().set_edgecolor('black')
+        cl_leg.get_frame().set_linewidth(0.2)
+        # Lilienthal
+        # Save global plots
+        fig_cd_global.savefig(f"{self.post_folder}all_objects_cd.pdf")
+        fig_cl_global.savefig(f"{self.post_folder}all_objects_cl.pdf")
