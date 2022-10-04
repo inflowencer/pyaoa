@@ -837,17 +837,23 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
             elif mode == "global":
                 return fig_sbs_global, axs_sbs_global
 
-        # Initialize global figure
+        # Initialize global figures
         fig_cd_global, axs_cd_global = liftPlotLayout("global")
         fig_cl_global, axs_cl_global = liftPlotLayout("global")
         fig_ll_global, axs_ll_global = LLPlotLayout("global")
         fig_sbs_global, axs_sbs_global = sbsPlotLayout("global")
 
+        # Initialize DataFrame for 3D plotting
+        df = pd.read_csv(f"{self.post_folder}{obj}/{obj}.csv", sep=",", index_col="alpha")
+        df_cl = df.drop(columns=["cd", "cl", "drag_force", "lift_force"])
 
-        # 3.3 Initialize Lilienthal plot
-        # 3.4 Initialize side-by-side plot
         # 4. Loop over all Objects and generate drag, lift, LL and side-by-side plot
+        counter = 0
         for obj in self.plotObjList:
+            tmp_df = pd.read_csv(f"{self.post_folder}{obj}/{obj}.csv", sep=",", index_col="alpha")
+            df_cl[counter] = tmp_df["cl"]
+            print(f"object: {obj}", tmp_df)
+            counter += 1
             try:
                 ref_data = self.setup["Objects"][obj]["ref-data"]
             except:
@@ -956,3 +962,6 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
         fig_cl_global.savefig(f"{self.post_folder}cl.pdf")
         fig_ll_global.savefig(f"{self.post_folder}LL.pdf")
         fig_sbs_global.savefig(f"{self.post_folder}SBS.pdf")
+
+        # Export dataframe
+        df_cl.to_csv(f"{self.post_folder}3D_cl.csv", index=True, sep=",")
