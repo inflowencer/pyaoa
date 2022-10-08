@@ -6,6 +6,7 @@ import os
 import yaml
 import subprocess
 import glob
+from pathlib import Path
 
 # Rich printing
 from rich.console import Console
@@ -291,7 +292,7 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
 ;              Analysing object `{objName}`
 ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ;
 ; Opening transcript...
-/file/start-transcript run/{objName}.hist o ()"""
+/file/start-transcript {self.run_folder}{objName}.hist o ()"""
 
                 # 1.3 Read in the mesh of that object
                 mesh = self.setup["Objects"][objName]["mesh"]
@@ -390,7 +391,7 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
             if os.path.exists(objResFolder):
                 contents = os.listdir(objResFolder)
                 if len(contents) > 0:
-                    self.clearRes = Prompt.ask("[bright_white]Previous results have been found, would you like to clear them?", choices=["y", "n"], default="n")
+                    self.clearRes = Prompt.ask(f"[bright_white]Previous results have been found for obj: {obj}, would you like to clear them?", choices=["y", "n"], default="n")
                     if self.clearRes == "y":
                         for item in contents:
                             try:
@@ -444,6 +445,7 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
         """Post-processing method"""
         console = Console()
         objResDict = {}
+        Path(f"{self.post_folder}object-results").mkdir(parents=True, exist_ok=True)
         # First prepare the raw output data depending on the solver
         if self.solver == "fluent":
             for obj in self.objects:
@@ -518,12 +520,28 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
                 clean_df["cd"] = clean_df["drag_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
                 clean_df["cl"] = clean_df["lift_force"] / (0.5 * self.ambientDict["rho"] * objDict[obj]["u_inf"]**2 * objDict[obj]["A"])
 
+                # 5. Check if features have been defined for DataFrame export
+                try:
+                    features = self.objects[obj]["features"]
+                except:
+                    features = False
+
+                if features:
+                    for feature in features.keys():
+                        clean_df[feature] = features[feature]
+
+                if not "df_all" in locals():
+                    df_all = pd.DataFrame(columns=list(clean_df.columns))
+
+                df_all = pd.concat([df_all, clean_df], ignore_index=True)
+
                 if self.export_csv == True:
                     clean_df.to_csv(f"{objResFolder}{obj}.csv", sep=',', header=True, index=False)
-                # console.print(clean_df)
-                # 4. Append DF objResDict
-                # objResDict[obj] = clean_df
-                # console.print
+                    # Export to CSV results folder
+                    clean_df.to_csv(f"{self.post_folder}object-results/{obj}.csv", sep=',', header=True, index=False)
+            
+            if self.export_csv == True:
+                df_all.to_csv(f"{self.post_folder}object-results/all_objects.csv", sep=',', header=True, index=False)
 
 
     def Plot(self):
@@ -846,13 +864,15 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
         # Initialize DataFrame for 3D plotting
         df = pd.read_csv(f"{self.post_folder}{obj}/{obj}.csv", sep=",", index_col="alpha")
         df_cl = df.drop(columns=["cd", "cl", "drag_force", "lift_force"])
+        df_cd = df.drop(columns=["cd", "cl", "drag_force", "lift_force"])
 
         # 4. Loop over all Objects and generate drag, lift, LL and side-by-side plot
         counter = 0
         for obj in self.plotObjList:
             tmp_df = pd.read_csv(f"{self.post_folder}{obj}/{obj}.csv", sep=",", index_col="alpha")
-            df_cl[counter] = tmp_df["cl"]
-            print(f"object: {obj}", tmp_df)
+            df_cl[f"{obj}"] = tmp_df["cl"]
+            df_cd[f"{obj}"] = tmp_df["cd"]
+            console.print(f"[bold green]Postprocessing object: [not bold bright_white]{obj} [bold green]...\n", tmp_df, "\n")
             counter += 1
             try:
                 ref_data = self.setup["Objects"][obj]["ref-data"]
@@ -964,4 +984,5 @@ Select the mode  [bold cyan]0: Preprocess   [bold yellow]1: Postprocess   [bold 
         fig_sbs_global.savefig(f"{self.post_folder}SBS.pdf")
 
         # Export dataframe
-        df_cl.to_csv(f"{self.post_folder}3D_cl.csv", index=True, sep=",")
+        df_cl.to_csv(f"{self.post_folder}3D_cl.csv", index=True, sep=",", index_label="alpha")
+        df_cd.to_csv(f"{self.post_folder}3D_cd.csv", index=True, sep=",", index_label="alpha")
